@@ -27,6 +27,13 @@ enable_signup = true
 [auth.email]
 enable_signup = true
 enable_confirmations = false
+otp_length = 6
+otp_expiry = 3600
+
+# Local dev: surface the 6-digit OTP code in the email so it can be entered in-app.
+[auth.email.template.magic_link]
+subject = "Your PlaySplit sign-in code"
+content_path = "./supabase/templates/magic_link.html"
 
 # Phone OTP (PRD §25) — provider configured via env in real deploys.
 [auth.sms]

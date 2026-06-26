@@ -4,18 +4,28 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
-type Mode = 'phone' | 'email';
+type Mode = 'password' | 'phone' | 'email';
 
 export default function LoginPage() {
   const router = useRouter();
   const supabase = createClient();
-  const [mode, setMode] = useState<Mode>('phone');
+  const [mode, setMode] = useState<Mode>('password');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [otp, setOtp] = useState('');
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  async function signInPassword() {
+    setError(null);
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
+    if (error) setError(error.message);
+    else router.push('/dashboard');
+  }
 
   async function sendOtp() {
     setError(null);
@@ -56,7 +66,7 @@ export default function LoginPage() {
         <p className="mt-1 text-sm text-[var(--muted)]">Sign in to your sports group</p>
 
         <div className="mt-5 flex gap-2 rounded-xl bg-slate-100 p-1 text-sm font-medium">
-          {(['phone', 'email'] as Mode[]).map((m) => (
+          {(['password', 'phone', 'email'] as Mode[]).map((m) => (
             <button
               key={m}
               onClick={() => {
@@ -67,13 +77,40 @@ export default function LoginPage() {
                 mode === m ? 'bg-white shadow-sm' : 'text-[var(--muted)]'
               }`}
             >
-              {m} OTP
+              {m === 'password' ? 'Password' : `${m} OTP`}
             </button>
           ))}
         </div>
 
         <div className="mt-4 space-y-3">
-          {!sent ? (
+          {mode === 'password' ? (
+            <>
+              <div>
+                <label className="label">Email</label>
+                <input
+                  className="input"
+                  placeholder="admin@playsplit.test"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  inputMode="email"
+                />
+              </div>
+              <div>
+                <label className="label">Password</label>
+                <input
+                  className="input"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && signInPassword()}
+                />
+              </div>
+              <button className="btn w-full" onClick={signInPassword} disabled={loading}>
+                {loading ? 'Signing in…' : 'Sign in'}
+              </button>
+            </>
+          ) : !sent ? (
             <>
               {mode === 'phone' ? (
                 <div>
