@@ -1,27 +1,48 @@
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { Settings2 } from 'lucide-react';
 import { GroupDashboard, type GroupDashboardData } from '@/components/dashboard';
-import { DEMO_DASHBOARD } from '@/lib/demo-data';
-import { createClient } from '@/lib/supabase/server';
+import { getActiveGroup, getGroupMembers } from '@/lib/groups';
 
-/**
- * Group dashboard (PRD §16). Reads the user's active group from Supabase.
- * Until group/match data exists for the user, falls back to seeded demo figures
- * so the shell is never empty during early development.
- */
 export default async function DashboardPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const active = await getActiveGroup();
 
-  // TODO(M1): load the user's active group + live aggregates. Demo data for now.
-  const data: GroupDashboardData = DEMO_DASHBOARD;
+  // New users with no group land on onboarding.
+  if (!active) redirect('/groups');
+
+  const members = await getGroupMembers(active.id);
+
+  // M1: real group identity; subscription/matches/aggregates fill in from M2–M5.
+  const data: GroupDashboardData = {
+    groupName: active.name,
+    sport: active.sport,
+    subscription: null,
+    upcomingMatches: [],
+    pendingPaymentsPaise: 0,
+    collectionRatePct: 0,
+    attendancePct: 0,
+    savingsPaise: 0,
+  };
 
   return (
-    <>
-      {user?.email && (
-        <p className="mb-3 text-xs text-[var(--muted)]">Signed in as {user.email}</p>
-      )}
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-[var(--muted)]">
+          {members.length} member{members.length === 1 ? '' : 's'} · {active.role.replace('_', ' ')}
+        </p>
+        <Link
+          href="/groups"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-dark"
+        >
+          <Settings2 size={14} /> Manage group
+        </Link>
+      </div>
       <GroupDashboard data={data} />
-    </>
+      {!data.subscription && (
+        <div className="card border-dashed text-center text-sm text-[var(--muted)]">
+          No active subscription yet. Grounds & subscriptions arrive in milestone M2.
+        </div>
+      )}
+    </div>
   );
 }

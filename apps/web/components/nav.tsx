@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, CalendarDays, Wallet, BarChart3, Settings } from 'lucide-react';
+import { AccountFooter } from '@/components/account';
 
 export const NAV_ITEMS = [
   { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
@@ -13,10 +14,10 @@ export const NAV_ITEMS = [
 ];
 
 /** Desktop sidebar (hidden on mobile). */
-export function Sidebar() {
+export function Sidebar({ email }: { email?: string }) {
   const path = usePathname();
   return (
-    <aside className="hidden w-60 shrink-0 border-r border-[var(--border)] bg-white p-4 md:block">
+    <aside className="hidden w-60 shrink-0 flex-col border-r border-[var(--border)] bg-white p-4 md:flex">
       <Link href="/dashboard" className="block px-2 text-xl font-extrabold text-brand">
         PlaySplit
       </Link>
@@ -37,6 +38,7 @@ export function Sidebar() {
           );
         })}
       </nav>
+      {email && <AccountFooter email={email} />}
     </aside>
   );
 }
