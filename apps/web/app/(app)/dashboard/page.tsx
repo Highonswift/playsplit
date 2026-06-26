@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { Settings2 } from 'lucide-react';
 import { GroupDashboard, type GroupDashboardData } from '@/components/dashboard';
 import { getActiveGroup, getGroupMembers } from '@/lib/groups';
+import { getActiveSubscription } from '@/lib/subscriptions';
 
 export default async function DashboardPage() {
   const active = await getActiveGroup();
@@ -10,13 +11,24 @@ export default async function DashboardPage() {
   // New users with no group land on onboarding.
   if (!active) redirect('/groups');
 
-  const members = await getGroupMembers(active.id);
+  const [members, sub] = await Promise.all([
+    getGroupMembers(active.id),
+    getActiveSubscription(active.id),
+  ]);
 
-  // M1: real group identity; subscription/matches/aggregates fill in from M2–M5.
+  // M1–M2: real group identity + active subscription; matches/aggregates from M3–M5.
   const data: GroupDashboardData = {
     groupName: active.name,
     sport: active.sport,
-    subscription: null,
+    subscription: sub
+      ? {
+          name: sub.name,
+          status: sub.status,
+          remainingHours: sub.remaining_hours,
+          daysRemaining: sub.days_remaining,
+          purchasedHours: sub.purchased_hours,
+        }
+      : null,
     upcomingMatches: [],
     pendingPaymentsPaise: 0,
     collectionRatePct: 0,
@@ -39,9 +51,12 @@ export default async function DashboardPage() {
       </div>
       <GroupDashboard data={data} />
       {!data.subscription && (
-        <div className="card border-dashed text-center text-sm text-[var(--muted)]">
-          No active subscription yet. Grounds & subscriptions arrive in milestone M2.
-        </div>
+        <Link
+          href="/grounds"
+          className="card block border-dashed text-center text-sm font-medium text-brand-dark"
+        >
+          + Add a ground & purchase a subscription
+        </Link>
       )}
     </div>
   );
