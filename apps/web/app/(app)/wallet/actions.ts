@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { rupeesToPaise } from '@playsplit/core';
+import { rupeesToPaise, formatPaise } from '@playsplit/core';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveGroup } from '@/lib/groups';
 
@@ -28,14 +28,23 @@ export async function recordManualPaymentAction(
   if (!group) return { error: 'No active group.' };
   if (group.role === 'player') return { error: 'Only group admins can record payments.' };
 
+  const amountPaise = rupeesToPaise(amountRupees);
   const supabase = await createClient();
   const { error } = await supabase.rpc('record_payment', {
     p_group: group.id,
     p_user: userId,
-    p_amount: rupeesToPaise(amountRupees),
+    p_amount: amountPaise,
     p_method: method,
   });
   if (error) return { error: error.message };
+
+  await supabase.rpc('create_notification', {
+    p_user: userId,
+    p_group: group.id,
+    p_type: 'payment',
+    p_title: 'Payment received',
+    p_body: `${formatPaise(amountPaise)} recorded to your wallet.`,
+  });
 
   revalidatePath('/wallet');
   revalidatePath('/dashboard');

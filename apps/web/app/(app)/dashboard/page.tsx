@@ -4,6 +4,7 @@ import { Settings2 } from 'lucide-react';
 import { GroupDashboard, type GroupDashboardData } from '@/components/dashboard';
 import { getActiveGroup, getGroupMembers } from '@/lib/groups';
 import { getActiveSubscription } from '@/lib/subscriptions';
+import { getDashboardStats } from '@/lib/reports';
 
 export default async function DashboardPage() {
   const active = await getActiveGroup();
@@ -11,12 +12,12 @@ export default async function DashboardPage() {
   // New users with no group land on onboarding.
   if (!active) redirect('/groups');
 
-  const [members, sub] = await Promise.all([
+  const [members, sub, stats] = await Promise.all([
     getGroupMembers(active.id),
     getActiveSubscription(active.id),
+    getDashboardStats(active.id),
   ]);
 
-  // M1–M2: real group identity + active subscription; matches/aggregates from M3–M5.
   const data: GroupDashboardData = {
     groupName: active.name,
     sport: active.sport,
@@ -29,11 +30,11 @@ export default async function DashboardPage() {
           purchasedHours: sub.purchased_hours,
         }
       : null,
-    upcomingMatches: [],
-    pendingPaymentsPaise: 0,
-    collectionRatePct: 0,
-    attendancePct: 0,
-    savingsPaise: 0,
+    upcomingMatches: stats.upcomingMatches,
+    pendingPaymentsPaise: stats.pendingPaymentsPaise,
+    collectionRatePct: stats.collectionRatePct,
+    attendancePct: stats.attendancePct,
+    savingsPaise: stats.savingsPaise,
   };
 
   return (

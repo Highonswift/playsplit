@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, CalendarDays, Wallet, BarChart3, Settings } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Wallet, BarChart3, Settings, Bell } from 'lucide-react';
 import { AccountFooter } from '@/components/account';
 
 export const NAV_ITEMS = [
@@ -14,16 +14,18 @@ export const NAV_ITEMS = [
 ];
 
 /** Desktop sidebar (hidden on mobile). */
-export function Sidebar({ email }: { email?: string }) {
+export function Sidebar({ email, unreadCount = 0 }: { email?: string; unreadCount?: number }) {
   const path = usePathname();
+  const items = [...NAV_ITEMS, { href: '/notifications', label: 'Notifications', icon: Bell }];
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r border-[var(--border)] bg-white p-4 md:flex">
       <Link href="/dashboard" className="block px-2 text-xl font-extrabold text-brand">
         PlaySplit
       </Link>
       <nav className="mt-6 space-y-1">
-        {NAV_ITEMS.map((item) => {
+        {items.map((item) => {
           const active = path.startsWith(item.href);
+          const showBadge = item.href === '/notifications' && unreadCount > 0;
           return (
             <Link
               key={item.href}
@@ -34,6 +36,11 @@ export function Sidebar({ email }: { email?: string }) {
             >
               <item.icon size={20} />
               {item.label}
+              {showBadge && (
+                <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
             </Link>
           );
         })}
