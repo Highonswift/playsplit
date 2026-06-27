@@ -46,6 +46,14 @@ export async function recordManualPaymentAction(
     p_body: `${formatPaise(amountPaise)} recorded to your wallet.`,
   });
 
+  await supabase.rpc('log_audit', {
+    p_group: group.id,
+    p_action: 'record_payment',
+    p_entity: 'payment',
+    p_entity_id: userId,
+    p_after: { amount_paise: amountPaise, method },
+  });
+
   revalidatePath('/wallet');
   revalidatePath('/dashboard');
   return { ok: true };

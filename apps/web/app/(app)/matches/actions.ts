@@ -168,6 +168,14 @@ export async function settleMatchAction(matchId: string): Promise<ActionState> {
   });
   if (error) return { error: error.message };
 
+  await supabase.rpc('log_audit', {
+    p_group: match.group_id,
+    p_action: 'settle_match',
+    p_entity: 'match',
+    p_entity_id: matchId,
+    p_after: { total_cost_paise: result.totalCostPaise, model: match.cost_model },
+  });
+
   // Notify present players that their share is ready (PRD §17).
   await Promise.all(
     attendance.map((a) =>
