@@ -168,6 +168,19 @@ export async function settleMatchAction(matchId: string): Promise<ActionState> {
   });
   if (error) return { error: error.message };
 
+  // Notify present players that their share is ready (PRD §17).
+  await Promise.all(
+    attendance.map((a) =>
+      supabase.rpc('create_notification', {
+        p_user: a.userId,
+        p_group: match.group_id,
+        p_type: 'settlement',
+        p_title: 'Match settled',
+        p_body: 'Your share for the match has been calculated.',
+      }),
+    ),
+  );
+
   revalidatePath(`/matches/${matchId}`);
   revalidatePath('/dashboard');
   revalidatePath('/wallet');
