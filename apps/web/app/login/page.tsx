@@ -10,11 +10,14 @@ export default function LoginPage() {
   const router = useRouter();
   const supabase = createClient();
   const [mode, setMode] = useState<Mode>('password');
+  const [isSignUp, setIsSignUp] = useState(false);
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [otp, setOtp] = useState('');
   const [sent, setSent] = useState(false);
+  const [info, setInfo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -25,6 +28,23 @@ export default function LoginPage() {
     setLoading(false);
     if (error) setError(error.message);
     else router.push('/dashboard');
+  }
+
+  async function signUpPassword() {
+    setError(null);
+    setInfo(null);
+    if (fullName.trim().length < 2) return setError('Enter your name.');
+    if (password.length < 6) return setError('Password must be at least 6 characters.');
+    setLoading(true);
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: fullName.trim() } },
+    });
+    setLoading(false);
+    if (error) setError(error.message);
+    else if (data.session) router.push('/dashboard');
+    else setInfo('Account created. Check your email to confirm, then sign in.');
   }
 
   async function sendOtp() {
@@ -85,11 +105,22 @@ export default function LoginPage() {
         <div className="mt-4 space-y-3">
           {mode === 'password' ? (
             <>
+              {isSignUp && (
+                <div>
+                  <label className="label">Your name</label>
+                  <input
+                    className="input"
+                    placeholder="Ravi Kumar"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                  />
+                </div>
+              )}
               <div>
                 <label className="label">Email</label>
                 <input
                   className="input"
-                  placeholder="admin@playsplit.test"
+                  placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   inputMode="email"
@@ -103,11 +134,26 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && signInPassword()}
+                  onKeyDown={(e) => e.key === 'Enter' && (isSignUp ? signUpPassword() : signInPassword())}
                 />
               </div>
-              <button className="btn w-full" onClick={signInPassword} disabled={loading}>
-                {loading ? 'Signing in…' : 'Sign in'}
+              <button
+                className="btn w-full"
+                onClick={isSignUp ? signUpPassword : signInPassword}
+                disabled={loading}
+              >
+                {loading ? 'Please wait…' : isSignUp ? 'Create account' : 'Sign in'}
+              </button>
+              {info && <p className="text-sm text-brand-dark">{info}</p>}
+              <button
+                className="w-full text-center text-sm text-[var(--muted)]"
+                onClick={() => {
+                  setIsSignUp(!isSignUp);
+                  setError(null);
+                  setInfo(null);
+                }}
+              >
+                {isSignUp ? 'Have an account? Sign in' : "New here? Create an account"}
               </button>
             </>
           ) : !sent ? (
