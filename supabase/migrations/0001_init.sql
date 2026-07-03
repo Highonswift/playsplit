@@ -38,7 +38,7 @@ create table groups (
   sport       text not null default 'cricket',
   cost_model  cost_model not null default 'equal',
   owner_id    uuid not null references profiles(id),
-  invite_code text unique not null default encode(gen_random_bytes(6), 'hex'),
+  invite_code text unique not null default substr(replace(gen_random_uuid()::text, '-', ''), 1, 12),
   created_at  timestamptz not null default now()
 );
 
