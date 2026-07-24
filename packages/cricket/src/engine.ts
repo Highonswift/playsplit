@@ -1,0 +1,233 @@
+import type {
+  Ball,
+  BatCard,
+  BowlCard,
+  FallOfWicket,
+  InningsSetup,
+  InningsState,
+  Partnership,
+  Wicket,
+} from './types';
+
+export function oversText(legalBalls: number): string {
+  return `${Math.floor(legalBalls / 6)}.${legalBalls % 6}`;
+}
+
+const BOWLER_CREDITED: Record<string, boolean> = {
+  bowled: true, caught: true, lbw: true, stumped: true, hit_wicket: true,
+  run_out: false, retired_out: false, retired_hurt: false, obstructing: false,
+  hit_twice: false, timed_out: false,
+};
+
+function dismissalLabel(w: Wicket): string {
+  switch (w.type) {
+    case 'bowled': return 'bowled';
+    case 'lbw': return 'lbw';
+    case 'caught': return 'caught';
+    case 'run_out': return 'run out';
+    case 'stumped': return 'stumped';
+    case 'hit_wicket': return 'hit wicket';
+    case 'retired_out': return 'retired out';
+    case 'retired_hurt': return 'retired hurt';
+    case 'obstructing': return 'obstructing the field';
+    case 'hit_twice': return 'hit the ball twice';
+    case 'timed_out': return 'timed out';
+    default: return 'out';
+  }
+}
+
+/**
+ * Derive full innings state from an ordered list of deliveries (§8, §12).
+ * Pure & deterministic — the DB stores deliveries append-only and this recomputes
+ * everything, which is what makes undo (drop the last delivery) trivially correct.
+ */
+export function computeInnings(setup: InningsSetup, balls: Ball[]): InningsState {
+  let striker: string | null = setup.strikerId;
+  let nonStriker: string | null = setup.nonStrikerId;
+  let bowlerId: string | null = balls.length > 0 ? balls[balls.length - 1]!.bowlerId : null;
+
+  let total = 0;
+  let wickets = 0;
+  let legalBalls = 0;
+  const extras = { wide: 0, noball: 0, bye: 0, legbye: 0, penalty: 0, total: 0 };
+
+  const bat = new Map<string, BatCard>();
+  const bowl = new Map<string, BowlCard>();
+  const fow: FallOfWicket[] = [];
+  const partnerships: Partnership[] = [];
+  const overGroups: string[][] = [];
+  let overSymbols: string[] = [];
+
+  let order = 0;
+  const getBat = (id: string): BatCard => {
+    let c = bat.get(id);
+    if (!c) {
+      c = { playerId: id, runs: 0, balls: 0, fours: 0, sixes: 0, out: false, dismissal: null, order: order++, strikeRate: 0 };
+      bat.set(id, c);
+    }
+    return c;
+  };
+  const getBowl = (id: string): BowlCard => {
+    let c = bowl.get(id);
+    if (!c) {
+      c = { playerId: id, legalBalls: 0, runs: 0, wickets: 0, maidens: 0, wides: 0, noballs: 0, dots: 0 };
+      bowl.set(id, c);
+    }
+    return c;
+  };
+
+  // Seed the opening pair so they appear even before facing a ball.
+  getBat(striker);
+  getBat(nonStriker);
+  let pRuns = 0;
+  let pBalls = 0;
+
+  let overCharged = 0;
+  let overBowler: string | null = null;
+
+  const swap = () => {
+    const t = striker;
+    striker = nonStriker;
+    nonStriker = t;
+  };
+
+  for (const b of balls) {
+    bowlerId = b.bowlerId;
+    const bw = getBowl(b.bowlerId);
+    if (overBowler === null) overBowler = b.bowlerId;
+
+    const isWide = b.extra === 'wide';
+    const isNoball = b.extra === 'noball';
+    const isBye = b.extra === 'bye';
+    const isLegbye = b.extra === 'legbye';
+    const isPenalty = b.extra === 'penalty';
+
+    // Penalty runs — awarded without a delivery.
+    if (isPenalty) {
+      total += b.extraRuns;
+      extras.penalty += b.extraRuns;
+      extras.total += b.extraRuns;
+      pRuns += b.extraRuns;
+      overSymbols.push(`P${b.extraRuns}`);
+      continue;
+    }
+
+    let charged = 0;
+    let strikeRuns = 0;
+
+    if (isWide) {
+      const wr = 1 + b.extraRuns;
+      total += wr; extras.wide += wr; extras.total += wr;
+      bw.wides += 1; charged = wr;
+      strikeRuns = b.extraRuns;
+      overSymbols.push(b.extraRuns ? `${wr}wd` : 'wd');
+    } else if (isNoball) {
+      total += 1; extras.noball += 1; extras.total += 1; bw.noballs += 1;
+      const rb = b.runsBat;
+      total += rb;
+      const bc = getBat(striker!); bc.runs += rb; bc.balls += 1;
+      if (rb === 4) bc.fours += 1;
+      if (rb === 6) bc.sixes += 1;
+      pRuns += rb; pBalls += 1;
+      if (b.extraRuns) { total += b.extraRuns; extras.bye += b.extraRuns; extras.total += b.extraRuns; }
+      charged = 1 + rb;
+      strikeRuns = rb + b.extraRuns;
+      overSymbols.push(rb ? `nb${rb}` : 'nb');
+    } else if (isBye || isLegbye) {
+      total += b.extraRuns;
+      if (isBye) extras.bye += b.extraRuns; else extras.legbye += b.extraRuns;
+      extras.total += b.extraRuns;
+      const bc = getBat(striker!); bc.balls += 1;
+      pBalls += 1;
+      bw.legalBalls += 1; legalBalls += 1;
+      if (b.extraRuns === 0) bw.dots += 1;
+      strikeRuns = b.extraRuns;
+      overSymbols.push((isLegbye ? 'lb' : 'b') + (b.extraRuns || ''));
+    } else {
+      const rb = b.runsBat;
+      total += rb;
+      const bc = getBat(striker!); bc.runs += rb; bc.balls += 1;
+      if (rb === 4) bc.fours += 1;
+      if (rb === 6) bc.sixes += 1;
+      if (rb === 0) bw.dots += 1;
+      pRuns += rb; pBalls += 1;
+      bw.legalBalls += 1; legalBalls += 1;
+      charged = rb;
+      strikeRuns = rb;
+      overSymbols.push(b.wicket ? (rb ? `${rb}+W` : 'W') : String(rb));
+    }
+
+    bw.runs += charged;
+    overCharged += charged;
+    const isLegal = !isWide && !isNoball;
+
+    // Strike rotation from runs run.
+    if (strikeRuns % 2 === 1) swap();
+
+    // Wicket handling.
+    if (b.wicket) {
+      wickets += 1;
+      const outId = b.wicket.outEnd === 'striker' ? striker : nonStriker;
+      const oc = getBat(outId!);
+      oc.out = true;
+      oc.dismissal = dismissalLabel(b.wicket);
+      oc.dismissalType = b.wicket.type;
+      if (BOWLER_CREDITED[b.wicket.type]) { bw.wickets += 1; oc.outBowlerId = b.bowlerId; }
+      if (b.wicket.fielderId) oc.outFielderId = b.wicket.fielderId;
+      fow.push({ wicketNumber: wickets, score: total, outPlayerId: outId!, over: oversText(legalBalls) });
+      partnerships.push({ batter1: striker!, batter2: nonStriker!, runs: pRuns, balls: pBalls, unbroken: false });
+      pRuns = 0; pBalls = 0;
+      const incoming = b.wicket.incomingBatterId ?? null;
+      if (b.wicket.outEnd === 'striker') striker = incoming; else nonStriker = incoming;
+    }
+
+    // Over completion (on the 6th legal ball).
+    if (isLegal && legalBalls % 6 === 0) {
+      if (overCharged === 0 && overBowler) getBowl(overBowler).maidens += 1;
+      overGroups.push(overSymbols);
+      overSymbols = [];
+      overCharged = 0;
+      overBowler = null;
+      swap();
+    }
+  }
+
+  // Finalise strike rates.
+  for (const c of bat.values()) c.strikeRate = c.balls > 0 ? +((c.runs / c.balls) * 100).toFixed(2) : 0;
+
+  const allOut = wickets >= setup.playersPerSide - 1;
+  const oversUp = setup.maxOvers !== null && legalBalls >= setup.maxOvers * 6;
+  const complete = allOut || oversUp;
+
+  const battingList = [...bat.values()].sort((a, b) => a.order - b.order);
+  if (striker && nonStriker && !complete) {
+    partnerships.push({ batter1: striker, batter2: nonStriker, runs: pRuns, balls: pBalls, unbroken: true });
+  }
+
+  return {
+    battingTeamId: setup.battingTeamId,
+    bowlingTeamId: setup.bowlingTeamId,
+    totalRuns: total,
+    wickets,
+    legalBalls,
+    oversText: oversText(legalBalls),
+    maxOvers: setup.maxOvers,
+    extras,
+    strikerId: complete ? null : striker,
+    nonStrikerId: complete ? null : nonStriker,
+    bowlerId,
+    batting: battingList,
+    bowling: [...bowl.values()],
+    partnerships,
+    fallOfWickets: fow,
+    currentOver: overSymbols.length > 0 ? overSymbols : (overGroups[overGroups.length - 1] ?? []),
+    runRate: legalBalls > 0 ? +((total / legalBalls) * 6).toFixed(2) : 0,
+    complete,
+  };
+}
+
+/** Required run rate for a chase. */
+export function requiredRunRate(target: number, scored: number, ballsRemaining: number): number {
+  if (ballsRemaining <= 0) return 0;
+  return +(((target - scored) / ballsRemaining) * 6).toFixed(2);
+}
