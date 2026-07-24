@@ -28,7 +28,8 @@ export default async function MatchesPage() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-extrabold tracking-tight">Matches</h1>
+      <h1 className="text-2xl font-extrabold tracking-tight">Sessions</h1>
+      <p className="-mt-3 text-sm text-muted">Ground bookings & attendance for cost-sharing.</p>
 
       {isAdmin && (
         <details className="card">
