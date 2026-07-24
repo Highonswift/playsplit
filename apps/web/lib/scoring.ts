@@ -27,6 +27,7 @@ export interface ScoringData {
   bowlingPlayers: PlayerRef[];
   requiredRunRate: number | null;
   ballsRemaining: number | null;
+  deliveryCount: number;
 }
 
 export async function getTeamPlayerRefs(teamId: string): Promise<PlayerRef[]> {
@@ -60,6 +61,7 @@ export async function getScoringData(
     return {
       innings: null, allInnings, state: null, names: {},
       battingPlayers: [], bowlingPlayers: [], requiredRunRate: null, ballsRemaining: null,
+      deliveryCount: 0,
     };
   }
 
@@ -111,5 +113,8 @@ export async function getScoringData(
     rrr = requiredRunRate(innings.target, state.totalRuns, ballsRemaining);
   }
 
-  return { innings, allInnings, state, names, battingPlayers, bowlingPlayers, requiredRunRate: rrr, ballsRemaining };
+  return {
+    innings, allInnings, state, names, battingPlayers, bowlingPlayers,
+    requiredRunRate: rrr, ballsRemaining, deliveryCount: balls.length,
+  };
 }

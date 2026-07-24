@@ -1,11 +1,15 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { ArrowLeft, MapPin, CalendarDays, Coins } from 'lucide-react';
-import { getActiveGroup } from '@/lib/groups';
+import { getActiveGroup, getGroupMembers } from '@/lib/groups';
 import { getCricketMatch, FORMAT_LABELS } from '@/lib/cricket';
 import { getScoringData, getTeamPlayerRefs } from '@/lib/scoring';
+import { getOfficials } from '@/lib/officials';
+import { createClient } from '@/lib/supabase/server';
 import { TossForm } from '@/components/cricket-forms';
 import { StartInningsForm, LiveScoreboard, ScoringPad, Scorecard } from '@/components/scoring';
+import { LiveSync, ControlBar } from '@/components/cricket-realtime';
+import { OfficialsManager } from '@/components/officials';
 import { FinishMatchButtons } from '@/components/finish-match';
 import { Badge } from '@/components/ui';
 
@@ -29,6 +33,20 @@ export default async function CricketMatchPage({ params }: { params: Promise<{ i
   const teamName = (tid: string) =>
     tid === m.team_a.id ? m.team_a.short_name ?? m.team_a.name : m.team_b.short_name ?? m.team_b.name;
 
+  // Officials, current user & scoring control (Phase 4, §11).
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const [officials, members] = tossDone
+    ? await Promise.all([getOfficials(id), getGroupMembers(group.id)])
+    : [[], []];
+  const canScore = isAdmin || officials.some((o) => o.user_id === user?.id && o.can_score);
+  const controllerId = m.scoring_control_user_id;
+  const iAmController = !!controllerId && controllerId === user?.id;
+  const nameOf = (uid: string) =>
+    officials.find((o) => o.user_id === uid)?.full_name ??
+    members.find((mm) => mm.user_id === uid)?.full_name ?? 'Umpire';
+  const controllerName = controllerId ? (iAmController ? 'You' : nameOf(controllerId)) : null;
+
   // Players for whichever team needs to start batting next.
   const firstInnings = scoring?.allInnings?.[0] ?? null;
   const secondInningsNeeded =
@@ -44,6 +62,7 @@ export default async function CricketMatchPage({ params }: { params: Promise<{ i
       <Link href="/cricket" className="inline-flex items-center gap-1 text-sm text-muted">
         <ArrowLeft size={16} /> Cricket
       </Link>
+      <LiveSync matchId={m.id} inningsId={scoring?.innings?.id ?? null} />
 
       {/* Match header */}
       <div className="card">
@@ -95,6 +114,18 @@ export default async function CricketMatchPage({ params }: { params: Promise<{ i
         )}
       </div>
 
+      {/* Match officials (admin) */}
+      {isAdmin && tossDone && (
+        <div className="card">
+          <h2 className="mb-3 font-semibold">Match officials</h2>
+          <OfficialsManager
+            matchId={m.id}
+            officials={officials}
+            members={members.map((mm) => ({ user_id: mm.user_id, full_name: mm.full_name }))}
+          />
+        </div>
+      )}
+
       {/* Scoring */}
       {tossDone && scoring && (
         <>
@@ -109,7 +140,15 @@ export default async function CricketMatchPage({ params }: { params: Promise<{ i
                 ballsRemaining={scoring.ballsRemaining}
                 target={scoring.innings.target}
               />
-              {isAdmin && (
+              {canScore && (
+                <ControlBar
+                  matchId={m.id}
+                  controllerName={controllerName}
+                  iAmController={iAmController}
+                  canScore={canScore}
+                />
+              )}
+              {iAmController && (
                 <div className="card">
                   <h2 className="mb-3 font-semibold">Scoring</h2>
                   <ScoringPad
@@ -119,7 +158,13 @@ export default async function CricketMatchPage({ params }: { params: Promise<{ i
                     bowlingPlayers={scoring.bowlingPlayers}
                     battingPlayers={scoring.battingPlayers}
                     names={scoring.names}
+                    deliveryCount={scoring.deliveryCount}
                   />
+                </div>
+              )}
+              {canScore && !iAmController && (
+                <div className="card border-dashed text-center text-sm text-muted">
+                  Take control above to update the score.
                 </div>
               )}
             </>
