@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Logo } from '@/components/logo';
@@ -10,7 +10,10 @@ type Mode = 'password' | 'phone' | 'email';
 
 export default function LoginPage() {
   const router = useRouter();
-  const supabase = createClient();
+  // Construct the browser client lazily (never at render) so `next build` can
+  // prerender this page without the NEXT_PUBLIC_* env vars present.
+  const clientRef = useRef<ReturnType<typeof createClient> | null>(null);
+  const getSupabase = () => (clientRef.current ??= createClient());
   const [mode, setMode] = useState<Mode>('password');
   const [isSignUp, setIsSignUp] = useState(false);
   const [phone, setPhone] = useState('');
@@ -26,7 +29,7 @@ export default function LoginPage() {
   async function signInPassword() {
     setError(null);
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await getSupabase().auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) setError(error.message);
     else router.push('/dashboard');
@@ -38,7 +41,7 @@ export default function LoginPage() {
     if (fullName.trim().length < 2) return setError('Enter your name.');
     if (password.length < 6) return setError('Password must be at least 6 characters.');
     setLoading(true);
-    const { data, error } = await supabase.auth.signUp({
+    const { data, error } = await getSupabase().auth.signUp({
       email,
       password,
       options: { data: { full_name: fullName.trim() } },
@@ -54,8 +57,8 @@ export default function LoginPage() {
     setLoading(true);
     const { error } =
       mode === 'phone'
-        ? await supabase.auth.signInWithOtp({ phone })
-        : await supabase.auth.signInWithOtp({ email });
+        ? await getSupabase().auth.signInWithOtp({ phone })
+        : await getSupabase().auth.signInWithOtp({ email });
     setLoading(false);
     if (error) setError(error.message);
     else setSent(true);
@@ -64,7 +67,7 @@ export default function LoginPage() {
   async function verify() {
     setError(null);
     setLoading(true);
-    const { error } = await supabase.auth.verifyOtp(
+    const { error } = await getSupabase().auth.verifyOtp(
       mode === 'phone'
         ? { phone, token: otp, type: 'sms' }
         : { email, token: otp, type: 'email' },
@@ -75,7 +78,7 @@ export default function LoginPage() {
   }
 
   async function oauth(provider: 'google' | 'apple') {
-    await supabase.auth.signInWithOAuth({
+    await getSupabase().auth.signInWithOAuth({
       provider,
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
