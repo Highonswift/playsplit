@@ -103,6 +103,17 @@ export async function getScoringData(
     balls,
   );
 
+  // An innings can be closed manually (declaration / agreed short innings /
+  // no over-limit set) via end_innings, which sets status='complete'. The
+  // engine only derives completion from deliveries, so honour the persisted
+  // status here — otherwise the scoring pad never closes and the "Start 2nd
+  // innings" form (gated on state.complete) never appears.
+  if (innings.status === 'complete') {
+    state.complete = true;
+    state.strikerId = null;
+    state.nonStrikerId = null;
+  }
+
   const names: Record<string, string> = {};
   for (const p of [...battingPlayers, ...bowlingPlayers]) names[p.id] = p.full_name;
 
