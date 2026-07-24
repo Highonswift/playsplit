@@ -46,6 +46,7 @@ export async function recordDeliveryAction(
   matchId: string,
   inningsId: string,
   d: DeliveryPayload,
+  expectedSeq?: number,
 ): Promise<Result> {
   if (!d.bowlerId) return { error: 'Select a bowler first.' };
   const supabase = await createClient();
@@ -59,8 +60,14 @@ export async function recordDeliveryAction(
     p_wicket_out_end: d.wicket?.outEnd ?? null,
     p_wicket_fielder: d.wicket?.fielderId ?? null,
     p_wicket_incoming: d.wicket?.incomingBatterId ?? null,
+    p_expected_seq: expectedSeq ?? null,
   });
-  if (error) return { error: error.message };
+  if (error) {
+    // Friendlier messages for control/conflict cases (§11.3–11.4).
+    if (error.message.includes('scoring control')) return { error: 'Another umpire is scoring — take control first.' };
+    if (error.message.includes('Score changed')) return { error: 'Score changed elsewhere — refreshing…' };
+    return { error: error.message };
+  }
   revalidatePath(`/cricket/matches/${matchId}`);
   return {};
 }

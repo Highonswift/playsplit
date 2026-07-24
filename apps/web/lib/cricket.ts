@@ -41,7 +41,7 @@ export async function getTeamPlayers(teamId: string): Promise<CricketPlayer[]> {
 }
 
 const MATCH_COLS =
-  'id, name, format, overs, players_per_side, venue, match_date, start_time, status, toss_winner_team_id, toss_decision, batting_first_team_id, team_a:team_a_id(id,name,short_name,color), team_b:team_b_id(id,name,short_name,color)';
+  'id, name, format, overs, players_per_side, venue, match_date, start_time, status, toss_winner_team_id, toss_decision, batting_first_team_id, scoring_control_user_id, team_a:team_a_id(id,name,short_name,color), team_b:team_b_id(id,name,short_name,color)';
 
 function mapMatch(m: Record<string, unknown>): CricketMatchView {
   return {

@@ -48,6 +48,7 @@ export interface CricketMatchView {
   toss_winner_team_id: string | null;
   toss_decision: 'bat' | 'bowl' | null;
   batting_first_team_id: string | null;
+  scoring_control_user_id: string | null;
 }
 
 export const FORMAT_LABELS: Record<CricketFormat, string> = {

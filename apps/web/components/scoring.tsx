@@ -148,10 +148,11 @@ export function LiveScoreboard({
 
 /* ---------------- Umpire scoring pad ---------------- */
 export function ScoringPad({
-  matchId, inningsId, state, bowlingPlayers, battingPlayers, names,
+  matchId, inningsId, state, bowlingPlayers, battingPlayers, names, deliveryCount,
 }: {
   matchId: string; inningsId: string; state: InningsState;
   bowlingPlayers: PlayerRef[]; battingPlayers: PlayerRef[]; names: Record<string, string>;
+  deliveryCount: number;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -167,9 +168,11 @@ export function ScoringPad({
   function send(payload: Omit<DeliveryPayload, 'bowlerId'>) {
     setError(null);
     startTransition(async () => {
-      const res = await recordDeliveryAction(matchId, inningsId, { ...payload, bowlerId });
-      if (res.error) setError(res.error);
-      else router.refresh();
+      const res = await recordDeliveryAction(matchId, inningsId, { ...payload, bowlerId }, deliveryCount + 1);
+      if (res.error) {
+        setError(res.error);
+        if (/refresh|changed/i.test(res.error)) router.refresh();
+      } else router.refresh();
     });
   }
 
