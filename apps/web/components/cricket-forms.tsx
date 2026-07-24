@@ -104,7 +104,12 @@ export function AddPlayerForm({ teamId }: { teamId: string }) {
   );
 }
 
-export function CreateMatchForm({ teams }: { teams: TeamRef[] }) {
+export function CreateMatchForm({
+  teams, tournaments = [],
+}: {
+  teams: TeamRef[];
+  tournaments?: { id: string; name: string }[];
+}) {
   const [state, action, pending] = useActionState(createMatchAction, INITIAL);
   const today = new Date().toISOString().slice(0, 10);
   if (teams.length < 2) {
@@ -116,6 +121,15 @@ export function CreateMatchForm({ teams }: { teams: TeamRef[] }) {
         <label className="label">Match name (optional)</label>
         <input className="input" name="name" placeholder="Final" />
       </div>
+      {tournaments.length > 0 && (
+        <div>
+          <label className="label">Tournament (optional)</label>
+          <select className="input" name="tournament_id" defaultValue="">
+            <option value="">Friendly / standalone</option>
+            {tournaments.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="label">Team A</label>

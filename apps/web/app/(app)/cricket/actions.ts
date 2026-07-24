@@ -76,6 +76,7 @@ const FORMAT_DEFAULT_OVERS: Partial<Record<CricketFormat, number>> = {
 export async function createMatchAction(_p: ActionState, formData: FormData): Promise<ActionState> {
   const name = String(formData.get('name') ?? '').trim() || null;
   const format = String(formData.get('format') ?? 't20') as CricketFormat;
+  const tournamentId = String(formData.get('tournament_id') ?? '') || null;
   const teamA = String(formData.get('team_a_id') ?? '');
   const teamB = String(formData.get('team_b_id') ?? '');
   const venue = String(formData.get('venue') ?? '').trim() || null;
@@ -97,6 +98,7 @@ export async function createMatchAction(_p: ActionState, formData: FormData): Pr
       group_id: res.group.id,
       name,
       format,
+      tournament_id: tournamentId,
       overs: format === 'unlimited' || format === 'test' ? null : overs,
       innings: format === 'test' ? 2 : 1,
       players_per_side: playersPerSide,
