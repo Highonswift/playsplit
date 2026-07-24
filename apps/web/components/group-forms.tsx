@@ -69,7 +69,7 @@ export function InviteCode({ code }: { code: string }) {
   return (
     <button
       onClick={copy}
-      className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-slate-50 px-3 py-2 font-mono text-sm font-semibold tracking-wide transition hover:bg-slate-100"
+      className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-surface-2 px-3 py-2 font-mono text-sm font-semibold tracking-wide transition hover:bg-surface-2"
     >
       {code}
       {copied ? <Check size={15} className="text-brand" /> : <Copy size={15} className="text-[var(--muted)]" />}

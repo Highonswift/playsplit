@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { LogOut, Bell } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { Logo } from '@/components/logo';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 /** Bell icon linking to notifications, with an unread count badge. */
 export function NotificationBell({ count }: { count: number }) {
@@ -12,7 +14,7 @@ export function NotificationBell({ count }: { count: number }) {
     <Link
       href="/notifications"
       aria-label="Notifications"
-      className="relative rounded-xl p-2 text-[var(--muted)] transition hover:bg-slate-100"
+      className="relative rounded-xl p-2 text-[var(--muted)] transition hover:bg-surface-2"
     >
       <Bell size={20} />
       {count > 0 && (
@@ -46,7 +48,7 @@ export function SignOutButton({
         onClick={signOut}
         disabled={loading}
         aria-label="Sign out"
-        className="rounded-xl p-2 text-[var(--muted)] transition hover:bg-slate-100 active:scale-95"
+        className="rounded-xl p-2 text-[var(--muted)] transition hover:bg-surface-2 active:scale-95"
       >
         <LogOut size={20} />
       </button>
@@ -57,7 +59,7 @@ export function SignOutButton({
     <button
       onClick={signOut}
       disabled={loading}
-      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[var(--muted)] transition hover:bg-slate-50 disabled:opacity-50"
+      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[var(--muted)] transition hover:bg-surface-2 disabled:opacity-50"
     >
       <LogOut size={20} />
       {loading ? 'Signing out…' : 'Sign out'}
@@ -78,11 +80,12 @@ function Avatar({ label }: { label: string }) {
 /** Desktop sidebar footer: identity + sign out. */
 export function AccountFooter({ email }: { email: string }) {
   return (
-    <div className="mt-auto border-t border-[var(--border)] pt-3">
+    <div className="mt-auto border-t border-border pt-3">
       <div className="flex items-center gap-2 px-1 pb-2">
         <Avatar label={email} />
-        <span className="truncate text-xs text-[var(--muted)]">{email}</span>
+        <span className="truncate text-xs text-muted">{email}</span>
       </div>
+      <ThemeToggle />
       <SignOutButton />
     </div>
   );
@@ -91,12 +94,10 @@ export function AccountFooter({ email }: { email: string }) {
 /** Mobile top bar: identity + notifications + sign-out (the bottom nav is full). */
 export function MobileTopBar({ email, unreadCount = 0 }: { email: string; unreadCount?: number }) {
   return (
-    <header className="sticky top-0 z-10 flex items-center justify-between border-b border-[var(--border)] bg-white/95 px-4 py-2.5 backdrop-blur md:hidden">
-      <div className="flex items-center gap-2">
-        <Avatar label={email} />
-        <span className="text-sm font-semibold text-brand">PlaySplit</span>
-      </div>
-      <div className="flex items-center gap-1">
+    <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-surface/95 px-4 py-2.5 backdrop-blur md:hidden">
+      <Logo size={24} />
+      <div className="flex items-center gap-0.5">
+        <ThemeToggle compact />
         <NotificationBell count={unreadCount} />
         <SignOutButton variant="icon" />
       </div>

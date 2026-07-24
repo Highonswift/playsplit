@@ -43,7 +43,7 @@ export default async function GroupsPage() {
                 className={`rounded-full px-3 py-1.5 text-sm font-medium ${
                   g.id === active?.id
                     ? 'bg-brand text-white'
-                    : 'border border-[var(--border)] bg-white text-[var(--muted)]'
+                    : 'border border-[var(--border)] bg-surface text-[var(--muted)]'
                 }`}
               >
                 {g.name}

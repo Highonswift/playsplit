@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { Logo } from '@/components/logo';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 type Mode = 'password' | 'phone' | 'email';
 
@@ -81,11 +83,15 @@ export default function LoginPage() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5">
-      <div className="card">
-        <h1 className="text-2xl font-extrabold text-brand">PlaySplit</h1>
-        <p className="mt-1 text-sm text-[var(--muted)]">Sign in to your sports group</p>
+      <div className="mb-4 flex items-center justify-between">
+        <Logo size={30} />
+        <ThemeToggle compact />
+      </div>
+      <div className="card shadow-pop">
+        <h1 className="font-display text-xl font-extrabold tracking-tight">Welcome back</h1>
+        <p className="mt-1 text-sm text-muted">Sign in to your sports community</p>
 
-        <div className="mt-5 flex gap-2 rounded-xl bg-slate-100 p-1 text-sm font-medium">
+        <div className="mt-5 flex gap-2 rounded-xl bg-surface-2 p-1 text-sm font-medium">
           {(['password', 'phone', 'email'] as Mode[]).map((m) => (
             <button
               key={m}
@@ -94,7 +100,7 @@ export default function LoginPage() {
                 setSent(false);
               }}
               className={`flex-1 rounded-lg py-2 capitalize ${
-                mode === m ? 'bg-white shadow-sm' : 'text-[var(--muted)]'
+                mode === m ? 'bg-surface shadow-sm' : 'text-[var(--muted)]'
               }`}
             >
               {m === 'password' ? 'Password' : `${m} OTP`}
