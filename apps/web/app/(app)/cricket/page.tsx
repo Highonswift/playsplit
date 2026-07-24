@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Users, ChevronRight, Shield } from 'lucide-react';
+import { Users, ChevronRight, Shield, Trophy, Medal } from 'lucide-react';
 import { getActiveGroup } from '@/lib/groups';
 import { getTeams, getCricketMatches, FORMAT_LABELS } from '@/lib/cricket';
+import { getTournaments } from '@/lib/tournaments';
 import { CreateTeamForm, CreateMatchForm } from '@/components/cricket-forms';
 import { Badge, EmptyState, LivePill } from '@/components/ui';
 
@@ -15,15 +16,27 @@ export default async function CricketPage() {
   const group = await getActiveGroup();
   if (!group) redirect('/groups');
 
-  const [teams, matches] = await Promise.all([getTeams(group.id), getCricketMatches(group.id)]);
+  const [teams, matches, tournaments] = await Promise.all([
+    getTeams(group.id), getCricketMatches(group.id), getTournaments(group.id),
+  ]);
   const isAdmin = group.role !== 'player';
   const teamRefs = teams.map((t) => ({ id: t.id, name: t.name, short_name: t.short_name, color: t.color }));
+  const tournamentRefs = tournaments.map((t) => ({ id: t.id, name: t.name }));
 
   return (
     <div className="space-y-5">
       <div>
         <h1 className="font-display text-2xl font-extrabold tracking-tight">Cricket</h1>
         <p className="text-sm text-muted">{group.name}</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Link href="/cricket/stats" className="card flex items-center gap-2 font-semibold">
+          <Trophy size={18} className="text-warning" /> Statistics
+        </Link>
+        <Link href="/cricket/tournaments" className="card flex items-center gap-2 font-semibold">
+          <Medal size={18} className="text-primary" /> Tournaments
+        </Link>
       </div>
 
       {/* Matches */}
@@ -64,7 +77,7 @@ export default async function CricketPage() {
         {isAdmin && (
           <details className="mt-3">
             <summary className="cursor-pointer text-sm font-semibold text-primary-dark">+ New match</summary>
-            <div className="mt-3"><CreateMatchForm teams={teamRefs} /></div>
+            <div className="mt-3"><CreateMatchForm teams={teamRefs} tournaments={tournamentRefs} /></div>
           </details>
         )}
       </div>
