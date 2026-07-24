@@ -5,14 +5,19 @@ import { usePathname } from 'next/navigation';
 import { LayoutDashboard, CalendarDays, Wallet, BarChart3, Settings, Bell } from 'lucide-react';
 import { AccountFooter } from '@/components/account';
 import { Logo } from '@/components/logo';
+import { CricketIcon } from '@/components/icons';
 
-export const NAV_ITEMS = [
-  { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
-  { href: '/matches', label: 'Matches', icon: CalendarDays },
-  { href: '/wallet', label: 'Wallet', icon: Wallet },
-  { href: '/reports', label: 'Reports', icon: BarChart3 },
-  { href: '/settings', label: 'Settings', icon: Settings },
-];
+const HOME = { href: '/dashboard', label: 'Home', icon: LayoutDashboard };
+const CRICKET = { href: '/cricket', label: 'Cricket', icon: CricketIcon };
+const SESSIONS = { href: '/matches', label: 'Sessions', icon: CalendarDays };
+const WALLET = { href: '/wallet', label: 'Wallet', icon: Wallet };
+const REPORTS = { href: '/reports', label: 'Reports', icon: BarChart3 };
+const SETTINGS = { href: '/settings', label: 'Settings', icon: Settings };
+
+// Full set for the desktop sidebar.
+export const NAV_ITEMS = [HOME, CRICKET, SESSIONS, WALLET, REPORTS, SETTINGS];
+// Trimmed 5-item set for the mobile bottom nav.
+const BOTTOM_NAV_ITEMS = [HOME, CRICKET, SESSIONS, WALLET, SETTINGS];
 
 /** Desktop sidebar (hidden on mobile). */
 export function Sidebar({ email, unreadCount = 0 }: { email?: string; unreadCount?: number }) {
@@ -56,14 +61,14 @@ export function BottomNav() {
   const path = usePathname();
   return (
     <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-border bg-surface/95 backdrop-blur md:hidden">
-      {NAV_ITEMS.map((item) => {
+      {BOTTOM_NAV_ITEMS.map((item) => {
         const active = path.startsWith(item.href);
         return (
           <Link
             key={item.href}
             href={item.href}
             className={`flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium ${
-              active ? 'text-brand-dark' : 'text-[var(--muted)]'
+              active ? 'text-primary-dark' : 'text-muted'
             }`}
           >
             <item.icon size={22} />
