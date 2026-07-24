@@ -78,10 +78,11 @@ export function StartInningsForm({
 
 /* ---------------- Live scoreboard ---------------- */
 export function LiveScoreboard({
-  state, names, battingTeamName, requiredRunRate, ballsRemaining, target,
+  state, names, battingTeamName, requiredRunRate, ballsRemaining, target, winProb,
 }: {
   state: InningsState; names: Record<string, string>; battingTeamName: string;
   requiredRunRate: number | null; ballsRemaining: number | null; target: number | null;
+  winProb?: number | null;
 }) {
   const striker = state.batting.find((b) => b.playerId === state.strikerId);
   const nonStriker = state.batting.find((b) => b.playerId === state.nonStrikerId);
@@ -112,6 +113,19 @@ export function LiveScoreboard({
           Need <b className="tabular">{Math.max(0, target - state.totalRuns)}</b> off{' '}
           <b className="tabular">{ballsRemaining}</b> balls
         </p>
+      )}
+
+      {winProb != null && (
+        <div>
+          <div className="mb-1 flex justify-between text-xs">
+            <span className="font-semibold">{battingTeamName} <span className="tabular">{winProb}%</span></span>
+            <span className="text-muted">win probability</span>
+          </div>
+          <div className="flex h-2 overflow-hidden rounded-full bg-surface-2">
+            <div className="h-full bg-primary" style={{ width: `${winProb}%` }} />
+            <div className="h-full bg-danger/60" style={{ width: `${100 - winProb}%` }} />
+          </div>
+        </div>
       )}
 
       <div className="grid grid-cols-2 gap-3 text-sm">

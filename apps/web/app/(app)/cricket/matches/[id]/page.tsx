@@ -7,8 +7,11 @@ import { getScoringData, getTeamPlayerRefs } from '@/lib/scoring';
 import { getOfficials } from '@/lib/officials';
 import { createClient } from '@/lib/supabase/server';
 import { TossForm } from '@/components/cricket-forms';
+import { winProbability } from '@playsplit/cricket';
 import { StartInningsForm, LiveScoreboard, ScoringPad, Scorecard } from '@/components/scoring';
 import { LiveSync, ControlBar } from '@/components/cricket-realtime';
+import { CommentaryFeed } from '@/components/commentary';
+import { ExportBar, OfflineBanner } from '@/components/cricket-export';
 import { OfficialsManager } from '@/components/officials';
 import { FinishMatchButtons } from '@/components/finish-match';
 import { Badge } from '@/components/ui';
@@ -47,6 +50,12 @@ export default async function CricketMatchPage({ params }: { params: Promise<{ i
     members.find((mm) => mm.user_id === uid)?.full_name ?? 'Umpire';
   const controllerName = controllerId ? (iAmController ? 'You' : nameOf(controllerId)) : null;
 
+  // Win probability for a chase (§8.1).
+  const winProb =
+    scoring?.innings?.target != null && scoring.ballsRemaining != null && scoring.state
+      ? winProbability(scoring.innings.target, scoring.state.totalRuns, scoring.state.wickets, scoring.ballsRemaining, m.players_per_side)
+      : null;
+
   // Players for whichever team needs to start batting next.
   const firstInnings = scoring?.allInnings?.[0] ?? null;
   const secondInningsNeeded =
@@ -63,6 +72,7 @@ export default async function CricketMatchPage({ params }: { params: Promise<{ i
         <ArrowLeft size={16} /> Cricket
       </Link>
       <LiveSync matchId={m.id} inningsId={scoring?.innings?.id ?? null} />
+      <OfflineBanner />
 
       {/* Match header */}
       <div className="card">
@@ -139,6 +149,7 @@ export default async function CricketMatchPage({ params }: { params: Promise<{ i
                 requiredRunRate={scoring.requiredRunRate}
                 ballsRemaining={scoring.ballsRemaining}
                 target={scoring.innings.target}
+                winProb={winProb}
               />
               {canScore && (
                 <ControlBar
@@ -170,8 +181,16 @@ export default async function CricketMatchPage({ params }: { params: Promise<{ i
             </>
           )}
 
+          {/* Export & share */}
+          {scoring.state && scoring.state.timeline.length > 0 && (
+            <ExportBar state={scoring.state} names={scoring.names} title={`${m.team_a.name} vs ${m.team_b.name}`} />
+          )}
+
           {/* Scorecard */}
           {scoring.state && <Scorecard state={scoring.state} names={scoring.names} />}
+
+          {/* Commentary */}
+          {scoring.state && <CommentaryFeed state={scoring.state} names={scoring.names} />}
 
           {/* Start innings 1 */}
           {!scoring.innings && isAdmin && (

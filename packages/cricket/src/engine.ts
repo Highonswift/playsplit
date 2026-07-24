@@ -6,6 +6,7 @@ import type {
   InningsSetup,
   InningsState,
   Partnership,
+  TimelineEntry,
   Wicket,
 } from './types';
 
@@ -55,6 +56,7 @@ export function computeInnings(setup: InningsSetup, balls: Ball[]): InningsState
   const bowl = new Map<string, BowlCard>();
   const fow: FallOfWicket[] = [];
   const partnerships: Partnership[] = [];
+  const timeline: TimelineEntry[] = [];
   const overGroups: string[][] = [];
   let overSymbols: string[] = [];
 
@@ -112,8 +114,10 @@ export function computeInnings(setup: InningsSetup, balls: Ball[]): InningsState
       continue;
     }
 
+    const facing = striker;
     let charged = 0;
     let strikeRuns = 0;
+    let wicketOutId: string | undefined;
 
     if (isWide) {
       const wr = 1 + b.extraRuns;
@@ -168,6 +172,7 @@ export function computeInnings(setup: InningsSetup, balls: Ball[]): InningsState
     if (b.wicket) {
       wickets += 1;
       const outId = b.wicket.outEnd === 'striker' ? striker : nonStriker;
+      wicketOutId = outId ?? undefined;
       const oc = getBat(outId!);
       oc.out = true;
       oc.dismissal = dismissalLabel(b.wicket);
@@ -180,6 +185,17 @@ export function computeInnings(setup: InningsSetup, balls: Ball[]): InningsState
       const incoming = b.wicket.incomingBatterId ?? null;
       if (b.wicket.outEnd === 'striker') striker = incoming; else nonStriker = incoming;
     }
+
+    timeline.push({
+      over: oversText(legalBalls),
+      strikerId: facing ?? '',
+      bowlerId: b.bowlerId,
+      runsBat: b.runsBat,
+      extra: b.extra,
+      extraRuns: b.extraRuns,
+      wicketType: b.wicket?.type,
+      wicketOutId,
+    });
 
     // Over completion (on the 6th legal ball).
     if (isLegal && legalBalls % 6 === 0) {
@@ -221,6 +237,7 @@ export function computeInnings(setup: InningsSetup, balls: Ball[]): InningsState
     partnerships,
     fallOfWickets: fow,
     currentOver: overSymbols.length > 0 ? overSymbols : (overGroups[overGroups.length - 1] ?? []),
+    timeline,
     runRate: legalBalls > 0 ? +((total / legalBalls) * 6).toFixed(2) : 0,
     complete,
   };
@@ -230,4 +247,48 @@ export function computeInnings(setup: InningsSetup, balls: Ball[]): InningsState
 export function requiredRunRate(target: number, scored: number, ballsRemaining: number): number {
   if (ballsRemaining <= 0) return 0;
   return +(((target - scored) / ballsRemaining) * 6).toFixed(2);
+}
+
+/** Auto-generated ball commentary (§9.4). Names resolved by the caller. */
+export function commentaryLine(e: TimelineEntry, names: Record<string, string>): string {
+  const bowler = names[e.bowlerId] ?? 'Bowler';
+  const striker = names[e.strikerId] ?? 'Batter';
+  const head = `${e.over} ${bowler} to ${striker}, `;
+
+  if (e.wicketType) {
+    const out = e.wicketOutId ? names[e.wicketOutId] ?? 'Batter' : striker;
+    const how = e.wicketType.replace('_', ' ');
+    return `${head}OUT! ${out} ${how}.`;
+  }
+  if (e.extra === 'wide') return `${head}wide${e.extraRuns ? ` + ${e.extraRuns}` : ''}.`;
+  if (e.extra === 'noball') return `${head}no ball${e.runsBat ? `, ${e.runsBat} run(s) off the bat` : ''}.`;
+  if (e.extra === 'bye') return `${head}${e.extraRuns} bye(s).`;
+  if (e.extra === 'legbye') return `${head}${e.extraRuns} leg bye(s).`;
+  if (e.extra === 'penalty') return `${head}${e.extraRuns} penalty run(s).`;
+  if (e.runsBat === 0) return `${head}no run.`;
+  if (e.runsBat === 4) return `${head}FOUR! Beautifully timed to the boundary.`;
+  if (e.runsBat === 6) return `${head}SIX! That's out of here.`;
+  return `${head}${e.runsBat} run${e.runsBat > 1 ? 's' : ''}.`;
+}
+
+/**
+ * Heuristic win probability for the CHASING side (0–100), §8.1 future enhancement.
+ * Blends how far ahead/behind the required rate they are with wickets in hand and
+ * balls remaining. Not a model — a transparent, monotonic estimate.
+ */
+export function winProbability(
+  target: number, scored: number, wickets: number, ballsRemaining: number, playersPerSide: number,
+): number {
+  if (scored >= target) return 100;
+  if (ballsRemaining <= 0) return 0;
+  const wicketsLeft = Math.max(0, playersPerSide - 1 - wickets);
+  if (wicketsLeft <= 0) return 0;
+
+  const runsNeeded = target - scored;
+  const rrr = (runsNeeded / ballsRemaining) * 6;
+  // Chances shrink as the required rate climbs; wickets in hand cushion it.
+  const rateScore = Math.max(0, 1 - (rrr - 6) / 12); // 1 at RRR<=6, 0 around RRR=18
+  const wicketScore = wicketsLeft / (playersPerSide - 1);
+  const p = 100 * (0.7 * rateScore + 0.3 * wicketScore);
+  return Math.round(Math.max(1, Math.min(99, p)));
 }
