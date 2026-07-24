@@ -10,6 +10,7 @@ export interface GroupSummary {
   sport: string;
   cost_model: 'equal' | 'usage' | 'investor' | 'hybrid';
   invite_code: string;
+  owner_id: string;
   role: GroupRole;
 }
 
@@ -31,7 +32,7 @@ export const getMyGroups = cache(async (): Promise<GroupSummary[]> => {
   // RLS lets a member see the whole roster, so scope to OUR own membership rows.
   const { data } = await supabase
     .from('group_members')
-    .select('role, groups(id, name, sport, cost_model, invite_code)')
+    .select('role, groups(id, name, sport, cost_model, invite_code, owner_id)')
     .eq('user_id', user.id)
     .eq('status', 'active')
     .order('joined_at', { ascending: true });

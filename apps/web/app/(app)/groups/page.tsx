@@ -1,11 +1,14 @@
 import { Users, Crown } from 'lucide-react';
 import { getMyGroups, getActiveGroup, getGroupMembers } from '@/lib/groups';
+import { getUser } from '@/lib/supabase/server';
 import { CreateGroupForm, JoinGroupForm, InviteCode } from '@/components/group-forms';
+import { MemberRoleButton } from '@/components/member-role';
 import { setActiveGroupAction } from './actions';
 
 export default async function GroupsPage() {
-  const [groups, active] = await Promise.all([getMyGroups(), getActiveGroup()]);
+  const [groups, active, me] = await Promise.all([getMyGroups(), getActiveGroup(), getUser()]);
   const members = active ? await getGroupMembers(active.id) : [];
+  const iAmAdmin = active ? active.role !== 'player' : false;
 
   // Onboarding: no groups yet.
   if (groups.length === 0) {
@@ -79,16 +82,30 @@ export default async function GroupsPage() {
               <h2 className="font-semibold">Members ({members.length})</h2>
             </div>
             <ul className="divide-y divide-[var(--border)]">
-              {members.map((m) => (
-                <li key={m.user_id} className="flex items-center justify-between py-2.5">
-                  <span className="text-sm font-medium">{m.full_name ?? 'Unnamed player'}</span>
-                  <span className="flex items-center gap-1 text-xs capitalize text-[var(--muted)]">
-                    {m.role !== 'player' && <Crown size={13} className="text-amber-500" />}
-                    {m.role.replace('_', ' ')}
-                  </span>
-                </li>
-              ))}
+              {members.map((m) => {
+                const memberIsAdmin = m.role !== 'player';
+                const canToggle =
+                  iAmAdmin && m.user_id !== me?.id && m.user_id !== active.owner_id;
+                return (
+                  <li key={m.user_id} className="flex items-center justify-between gap-3 py-2.5">
+                    <span className="text-sm font-medium">{m.full_name ?? 'Unnamed player'}</span>
+                    {canToggle ? (
+                      <MemberRoleButton userId={m.user_id} isAdmin={memberIsAdmin} />
+                    ) : (
+                      <span className="flex items-center gap-1 text-xs capitalize text-[var(--muted)]">
+                        {memberIsAdmin && <Crown size={13} className="text-amber-500" />}
+                        {m.role.replace('_', ' ')}
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
+            {iAmAdmin && (
+              <p className="mt-3 text-xs text-[var(--muted)]">
+                Co-admins can create matches and update live scores. The owner is always an admin.
+              </p>
+            )}
           </div>
         </>
       )}

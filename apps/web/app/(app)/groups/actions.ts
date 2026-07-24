@@ -3,8 +3,8 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { createClient } from '@/lib/supabase/server';
-import { ACTIVE_GROUP_COOKIE } from '@/lib/groups';
+import { createClient, getUser } from '@/lib/supabase/server';
+import { ACTIVE_GROUP_COOKIE, getActiveGroup } from '@/lib/groups';
 
 export interface ActionState {
   error?: string;
@@ -48,6 +48,37 @@ export async function joinGroupAction(
   const group = Array.isArray(data) ? data[0] : data;
   (await cookies()).set(ACTIVE_GROUP_COOKIE, group.id, { path: '/' });
   redirect('/dashboard');
+}
+
+/**
+ * Promote a member to co-admin (group_admin) or demote back to viewer (player).
+ * Admin-only. Co-admins can create matches/teams AND update live scores
+ * (can_score_match() returns true for any group admin).
+ */
+export async function setMemberRoleAction(
+  userId: string,
+  makeAdmin: boolean,
+): Promise<{ error?: string }> {
+  const group = await getActiveGroup();
+  if (!group) return { error: 'No active group.' };
+  if (group.role === 'player') return { error: 'Only admins can change roles.' };
+
+  const me = await getUser();
+  if (me?.id === userId) return { error: "You can't change your own role." };
+  if (group.owner_id === userId && !makeAdmin) {
+    return { error: 'The group owner stays an admin.' };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('group_members')
+    .update({ role: makeAdmin ? 'group_admin' : 'player' })
+    .eq('group_id', group.id)
+    .eq('user_id', userId);
+  if (error) return { error: error.message };
+
+  revalidatePath('/groups');
+  return {};
 }
 
 /** Switch which group the app is currently showing. */
