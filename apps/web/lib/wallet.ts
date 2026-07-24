@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient, getUser } from '@/lib/supabase/server';
 
 export interface WalletTxn {
   id: string;
@@ -16,11 +16,9 @@ export interface WalletView {
 
 /** The signed-in user's wallet for a group (balance + transaction history). */
 export async function getMyWallet(groupId: string): Promise<WalletView> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) return { balance_paise: 0, transactions: [] };
+  const supabase = await createClient();
 
   const { data: account } = await supabase
     .from('wallet_accounts')

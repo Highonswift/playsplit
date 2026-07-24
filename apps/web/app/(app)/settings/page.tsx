@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { MapPin, Users, ChevronRight, User, Coins } from 'lucide-react';
 import { getActiveGroup } from '@/lib/groups';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, getUser } from '@/lib/supabase/server';
 import { ProfileForm, CostModelForm } from '@/components/settings-forms';
 
 const LINKS = [
@@ -14,10 +14,8 @@ export default async function SettingsPage() {
   const group = await getActiveGroup();
   if (!group) redirect('/groups');
 
+  const user = await getUser();
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
   const { data: profile } = await supabase
     .from('profiles')
     .select('full_name')

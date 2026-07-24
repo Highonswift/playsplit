@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { cache } from 'react';
 
 // Support both the new key format (sb_publishable_… / sb_secret_…) and the
 // legacy anon / service_role keys — whichever is configured.
@@ -44,3 +45,17 @@ export function createServiceClient() {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }
+
+/**
+ * The signed-in user, fetched at most ONCE per request. Without this, a single
+ * page render calls auth.getUser() (a network round-trip to Supabase Auth)
+ * several times — layout, active-group lookup, wallet, etc. React's cache()
+ * dedupes them into one call, cutting latency on every navigation.
+ */
+export const getUser = cache(async () => {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user;
+});

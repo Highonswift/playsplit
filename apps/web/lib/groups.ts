@@ -1,5 +1,6 @@
+import { cache } from 'react';
 import { cookies } from 'next/headers';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, getUser } from '@/lib/supabase/server';
 
 export type GroupRole = 'platform_admin' | 'group_admin' | 'player';
 
@@ -21,14 +22,12 @@ export interface GroupMember {
 
 const ACTIVE_GROUP_COOKIE = 'ps_active_group';
 
-/** All groups the signed-in user is an active member of. */
-export async function getMyGroups(): Promise<GroupSummary[]> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+/** All groups the signed-in user is an active member of (cached per request). */
+export const getMyGroups = cache(async (): Promise<GroupSummary[]> => {
+  const user = await getUser();
   if (!user) return [];
 
+  const supabase = await createClient();
   // RLS lets a member see the whole roster, so scope to OUR own membership rows.
   const { data } = await supabase
     .from('group_members')
@@ -43,16 +42,16 @@ export async function getMyGroups(): Promise<GroupSummary[]> {
       const g = r.groups as unknown as Omit<GroupSummary, 'role'>;
       return { ...g, role: r.role as GroupRole };
     });
-}
+});
 
 /** The currently-selected group (cookie), falling back to the first membership. */
-export async function getActiveGroup(): Promise<GroupSummary | null> {
+export const getActiveGroup = cache(async (): Promise<GroupSummary | null> => {
   const groups = await getMyGroups();
   if (groups.length === 0) return null;
   const cookieStore = await cookies();
   const id = cookieStore.get(ACTIVE_GROUP_COOKIE)?.value;
   return groups.find((g) => g.id === id) ?? groups[0]!;
-}
+});
 
 /** Roster of a group (members + their profile names). */
 export async function getGroupMembers(groupId: string): Promise<GroupMember[]> {

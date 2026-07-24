@@ -5,7 +5,7 @@ import { getActiveGroup, getGroupMembers } from '@/lib/groups';
 import { getCricketMatch, FORMAT_LABELS } from '@/lib/cricket';
 import { getScoringData, getTeamPlayerRefs } from '@/lib/scoring';
 import { getOfficials } from '@/lib/officials';
-import { createClient } from '@/lib/supabase/server';
+import { getUser } from '@/lib/supabase/server';
 import { TossForm } from '@/components/cricket-forms';
 import { winProbability } from '@playsplit/cricket';
 import { StartInningsForm, LiveScoreboard, ScoringPad, Scorecard } from '@/components/scoring';
@@ -37,8 +37,7 @@ export default async function CricketMatchPage({ params }: { params: Promise<{ i
     tid === m.team_a.id ? m.team_a.short_name ?? m.team_a.name : m.team_b.short_name ?? m.team_b.name;
 
   // Officials, current user & scoring control (Phase 4, §11).
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getUser();
   const [officials, members] = tossDone
     ? await Promise.all([getOfficials(id), getGroupMembers(group.id)])
     : [[], []];

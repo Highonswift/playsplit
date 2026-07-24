@@ -1,14 +1,11 @@
 import { Sidebar, BottomNav } from '@/components/nav';
 import { MobileTopBar } from '@/components/account';
-import { createClient } from '@/lib/supabase/server';
+import { getUser } from '@/lib/supabase/server';
 import { getUnreadCount } from '@/lib/notifications';
 
 /** Authenticated app shell: sidebar on desktop, bottom-nav on mobile (PRD §24). */
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
   const email = user?.email ?? '';
   const unread = user ? await getUnreadCount() : 0;
 
