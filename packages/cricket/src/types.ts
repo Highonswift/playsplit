@@ -75,6 +75,18 @@ export interface FallOfWicket {
   over: string; // "12.3"
 }
 
+/** Per-delivery record for commentary & the timeline (§9.4). */
+export interface TimelineEntry {
+  over: string;          // "3.2"
+  strikerId: string;
+  bowlerId: string;
+  runsBat: number;
+  extra: ExtraType | null;
+  extraRuns: number;
+  wicketType?: DismissalType;
+  wicketOutId?: string;
+}
+
 export interface InningsState {
   battingTeamId: string;
   bowlingTeamId: string;
@@ -92,6 +104,7 @@ export interface InningsState {
   partnerships: Partnership[];
   fallOfWickets: FallOfWicket[];
   currentOver: string[];     // e.g. ["1", "W", "4", "wd"]
+  timeline: TimelineEntry[];
   runRate: number;
   complete: boolean;
 }
