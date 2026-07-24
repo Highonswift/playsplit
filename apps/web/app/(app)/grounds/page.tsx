@@ -9,8 +9,8 @@ const STATUS_STYLES: Record<SubscriptionStatus, string> = {
   green: 'bg-emerald-100 text-emerald-700',
   yellow: 'bg-amber-100 text-amber-700',
   red: 'bg-red-100 text-red-700',
-  expired: 'bg-slate-200 text-slate-600',
-  gray: 'bg-slate-100 text-slate-500',
+  expired: 'bg-surface-2 text-muted',
+  gray: 'bg-surface-2 text-subtle',
 };
 
 export default async function GroundsPage() {
@@ -62,7 +62,7 @@ export default async function GroundsPage() {
                     <div className="stat-label">per hour</div>
                   </div>
                 </div>
-                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-2">
                   <div
                     className="h-full bg-brand"
                     style={{

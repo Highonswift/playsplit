@@ -49,7 +49,7 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
               <MapPin size={13} /> {match.cost_model} cost-sharing
             </p>
           </div>
-          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold capitalize">
+          <span className="rounded-full bg-surface-2 px-2.5 py-1 text-xs font-semibold capitalize">
             {match.status}
           </span>
         </div>

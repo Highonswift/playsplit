@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, CalendarDays, Wallet, BarChart3, Settings, Bell } from 'lucide-react';
 import { AccountFooter } from '@/components/account';
+import { Logo } from '@/components/logo';
 
 export const NAV_ITEMS = [
   { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
@@ -18,9 +19,9 @@ export function Sidebar({ email, unreadCount = 0 }: { email?: string; unreadCoun
   const path = usePathname();
   const items = [...NAV_ITEMS, { href: '/notifications', label: 'Notifications', icon: Bell }];
   return (
-    <aside className="hidden w-60 shrink-0 flex-col border-r border-[var(--border)] bg-white p-4 md:flex">
-      <Link href="/dashboard" className="block px-2 text-xl font-extrabold text-brand">
-        PlaySplit
+    <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-surface p-4 md:flex">
+      <Link href="/dashboard" className="block px-1">
+        <Logo size={26} />
       </Link>
       <nav className="mt-6 space-y-1">
         {items.map((item) => {
@@ -31,7 +32,7 @@ export function Sidebar({ email, unreadCount = 0 }: { email?: string; unreadCoun
               key={item.href}
               href={item.href}
               className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
-                active ? 'bg-brand-light text-brand-dark' : 'text-[var(--muted)] hover:bg-slate-50'
+                active ? 'bg-brand-light text-brand-dark' : 'text-[var(--muted)] hover:bg-surface-2'
               }`}
             >
               <item.icon size={20} />
@@ -54,7 +55,7 @@ export function Sidebar({ email, unreadCount = 0 }: { email?: string; unreadCoun
 export function BottomNav() {
   const path = usePathname();
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-[var(--border)] bg-white/95 backdrop-blur md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-border bg-surface/95 backdrop-blur md:hidden">
       {NAV_ITEMS.map((item) => {
         const active = path.startsWith(item.href);
         return (

@@ -59,7 +59,7 @@ export default async function ReportsPage() {
                       {u.expired > 0 && ` · ${u.expired}h expired`}
                     </span>
                   </div>
-                  <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                  <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-2">
                     <div className="h-full bg-brand" style={{ width: `${Math.min(100, pct)}%` }} />
                   </div>
                 </li>
