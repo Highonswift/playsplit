@@ -39,6 +39,7 @@ export interface CricketMatchView {
   format: CricketFormat;
   overs: number | null;
   players_per_side: number;
+  match_type: 'standard' | 'pickup';
   team_a: TeamRef;
   team_b: TeamRef;
   venue: string | null;

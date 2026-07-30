@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Users, ChevronRight, Shield, Trophy, Medal } from 'lucide-react';
+import { Users, ChevronRight, Shield, Trophy, Medal, Zap, UsersRound } from 'lucide-react';
 import { getActiveGroup } from '@/lib/groups';
 import { getTeams, getCricketMatches, FORMAT_LABELS } from '@/lib/cricket';
 import { getTournaments } from '@/lib/tournaments';
@@ -30,10 +30,35 @@ export default async function CricketPage() {
         <p className="text-sm text-muted">{group.name}</p>
       </div>
 
+      {/* Pickup cricket: whoever turns up, split into two sides, play. */}
+      {isAdmin && (
+        <div className="grid grid-cols-2 gap-3">
+          <Link
+            href="/cricket/pickup"
+            className="card col-span-2 flex items-center gap-3 bg-primary text-white"
+          >
+            <Zap size={22} />
+            <div>
+              <p className="font-display font-bold">Start a game</p>
+              <p className="text-xs opacity-90">Pick who&apos;s here, auto-split into two sides, play</p>
+            </div>
+            <ChevronRight size={18} className="ml-auto" />
+          </Link>
+          <Link href="/cricket/pool" className="card flex items-center gap-2 font-semibold">
+            <UsersRound size={18} className="text-primary" /> Player pool
+          </Link>
+          <Link href="/cricket/stats" className="card flex items-center gap-2 font-semibold">
+            <Trophy size={18} className="text-warning" /> Statistics
+          </Link>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3">
-        <Link href="/cricket/stats" className="card flex items-center gap-2 font-semibold">
-          <Trophy size={18} className="text-warning" /> Statistics
-        </Link>
+        {!isAdmin && (
+          <Link href="/cricket/stats" className="card flex items-center gap-2 font-semibold">
+            <Trophy size={18} className="text-warning" /> Statistics
+          </Link>
+        )}
         <Link href="/cricket/tournaments" className="card flex items-center gap-2 font-semibold">
           <Medal size={18} className="text-primary" /> Tournaments
         </Link>

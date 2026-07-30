@@ -80,6 +80,26 @@ export async function undoAction(matchId: string, inningsId: string): Promise<Re
   return {};
 }
 
+/** Add a late-arriving player to a side mid-match (pickup mode). */
+export async function addMatchPlayerAction(
+  matchId: string,
+  teamId: string,
+  playerId: string,
+  isShared = false,
+): Promise<Result> {
+  if (!teamId || !playerId) return { error: 'Pick a side and a player.' };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('add_match_player', {
+    p_match: matchId,
+    p_team: teamId,
+    p_player: playerId,
+    p_is_shared: isShared,
+  });
+  if (error) return { error: error.message };
+  revalidatePath(`/cricket/matches/${matchId}`);
+  return {};
+}
+
 export async function endInningsAction(matchId: string, inningsId: string): Promise<Result> {
   const supabase = await createClient();
   const { error } = await supabase.rpc('end_innings', { p_innings: inningsId });

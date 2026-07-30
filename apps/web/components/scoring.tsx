@@ -13,8 +13,11 @@ import {
 } from '@/app/(app)/cricket/matches/[id]/scoring-actions';
 import { Badge, LivePill } from '@/components/ui';
 
-type PlayerRef = { id: string; full_name: string; role: string };
+type PlayerRef = { id: string; full_name: string; role: string; is_shared?: boolean };
 const INITIAL: Result = {};
+
+/** Player label, marking a shared player (plays for both sides) with ⇄. */
+const plabel = (p: PlayerRef) => (p.is_shared ? `${p.full_name} ⇄` : p.full_name);
 
 const DISMISSALS = [
   'bowled', 'caught', 'lbw', 'run_out', 'stumped', 'hit_wicket',
@@ -60,13 +63,13 @@ export function StartInningsForm({
         <div>
           <label className="label">Striker</label>
           <select className="input" name="striker_id" defaultValue={battingPlayers[0]!.id}>
-            {battingPlayers.map((p) => <option key={p.id} value={p.id}>{p.full_name}</option>)}
+            {battingPlayers.map((p) => <option key={p.id} value={p.id}>{plabel(p)}</option>)}
           </select>
         </div>
         <div>
           <label className="label">Non-striker</label>
           <select className="input" name="non_striker_id" defaultValue={battingPlayers[1]!.id}>
-            {battingPlayers.map((p) => <option key={p.id} value={p.id}>{p.full_name}</option>)}
+            {battingPlayers.map((p) => <option key={p.id} value={p.id}>{plabel(p)}</option>)}
           </select>
         </div>
       </div>
@@ -209,7 +212,7 @@ export function ScoringPad({
         <label className="label">Bowler</label>
         <select className="input" value={bowlerId} onChange={(e) => setBowlerId(e.target.value)}>
           <option value="" disabled>Select bowler…</option>
-          {bowlingPlayers.map((p) => <option key={p.id} value={p.id}>{p.full_name}</option>)}
+          {bowlingPlayers.map((p) => <option key={p.id} value={p.id}>{plabel(p)}</option>)}
         </select>
       </div>
 
@@ -326,14 +329,14 @@ function WicketModal({
             <label className="label">Fielder</label>
             <select className="input" value={fielderId} onChange={(e) => setFielderId(e.target.value)}>
               <option value="">—</option>
-              {fielders.map((p) => <option key={p.id} value={p.id}>{p.full_name}</option>)}
+              {fielders.map((p) => <option key={p.id} value={p.id}>{plabel(p)}</option>)}
             </select>
           </div>
         )}
         <div>
           <label className="label">New batter</label>
           <select className="input" value={incomingBatterId} onChange={(e) => setIncomingBatterId(e.target.value)}>
-            {available.map((p) => <option key={p.id} value={p.id}>{p.full_name}</option>)}
+            {available.map((p) => <option key={p.id} value={p.id}>{plabel(p)}</option>)}
           </select>
         </div>
         <div className="grid grid-cols-2 gap-2">

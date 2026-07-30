@@ -2,8 +2,9 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { ArrowLeft, MapPin, CalendarDays, Coins } from 'lucide-react';
 import { getActiveGroup, getGroupMembers } from '@/lib/groups';
-import { getCricketMatch, FORMAT_LABELS } from '@/lib/cricket';
-import { getScoringData, getTeamPlayerRefs } from '@/lib/scoring';
+import { getCricketMatch, getPoolPlayers, FORMAT_LABELS } from '@/lib/cricket';
+import { getScoringData, getSidePlayers, getMatchSquad } from '@/lib/scoring';
+import { LatePlayerAdder } from '@/components/pickup';
 import { getOfficials } from '@/lib/officials';
 import { getUser } from '@/lib/supabase/server';
 import { TossForm } from '@/components/cricket-forms';
@@ -30,8 +31,9 @@ export default async function CricketMatchPage({ params }: { params: Promise<{ i
   const battingFirst = m.batting_first_team_id === m.team_a.id ? m.team_a : m.team_b;
   const bowlingFirst = m.batting_first_team_id === m.team_a.id ? m.team_b : m.team_a;
 
+  const isPickup = m.match_type === 'pickup';
   const scoring = tossDone
-    ? await getScoringData(id, m.players_per_side, m.overs)
+    ? await getScoringData(id, m.players_per_side, m.overs, isPickup)
     : null;
   const teamName = (tid: string) =>
     tid === m.team_a.id ? m.team_a.short_name ?? m.team_a.name : m.team_b.short_name ?? m.team_b.name;
@@ -60,10 +62,20 @@ export default async function CricketMatchPage({ params }: { params: Promise<{ i
   const secondInningsNeeded =
     scoring && scoring.allInnings.length === 1 && scoring.state?.complete && m.status !== 'completed';
   const battingFirstPlayers =
-    tossDone && !scoring?.innings ? await getTeamPlayerRefs(battingFirst.id) : [];
+    tossDone && !scoring?.innings ? await getSidePlayers(id, battingFirst.id, isPickup) : [];
   const secondBattingPlayers = secondInningsNeeded
-    ? await getTeamPlayerRefs(bowlingFirst.id)
+    ? await getSidePlayers(id, bowlingFirst.id, isPickup)
     : [];
+
+  // Pickup: pool players not yet on either side, for mid-match late joins.
+  const [squadA, squadB] = isPickup && tossDone
+    ? await Promise.all([getMatchSquad(id, m.team_a.id), getMatchSquad(id, m.team_b.id)])
+    : [[], []];
+  const inMatchIds = new Set([...squadA, ...squadB].map((p) => p.id));
+  const latePool =
+    isPickup && canScore && tossDone && m.status !== 'completed'
+      ? (await getPoolPlayers(group.id)).filter((p) => !inMatchIds.has(p.id))
+      : [];
 
   return (
     <div className="space-y-5">
@@ -131,6 +143,22 @@ export default async function CricketMatchPage({ params }: { params: Promise<{ i
             matchId={m.id}
             officials={officials}
             members={members.map((mm) => ({ user_id: mm.user_id, full_name: mm.full_name }))}
+          />
+        </div>
+      )}
+
+      {/* Late arrivals (pickup) — admins & scorers can add players mid-match */}
+      {isPickup && canScore && tossDone && m.status !== 'completed' && (
+        <div className="card">
+          <h2 className="mb-1 font-semibold">Add a late arrival</h2>
+          <p className="stat-label mb-3">Someone just showed up? Drop them into a side.</p>
+          <LatePlayerAdder
+            matchId={m.id}
+            teams={[
+              { id: m.team_a.id, name: m.team_a.name },
+              { id: m.team_b.id, name: m.team_b.name },
+            ]}
+            available={latePool.map((p) => ({ id: p.id, full_name: p.full_name }))}
           />
         </div>
       )}

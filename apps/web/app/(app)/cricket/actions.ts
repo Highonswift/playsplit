@@ -114,6 +114,78 @@ export async function createMatchAction(_p: ActionState, formData: FormData): Pr
   redirect(`/cricket/matches/${data.id}`);
 }
 
+// ---------------------------------------------------------------------------
+// Pickup cricket (Ariyalur mode): a group player pool + ad-hoc daily sides.
+// ---------------------------------------------------------------------------
+
+/** Add one or more names to the group's pickup pool (players with no team). */
+export async function addPoolPlayersAction(names: string[]): Promise<ActionState> {
+  const clean = names.map((n) => n.trim()).filter((n) => n.length >= 2);
+  if (clean.length === 0) return { error: 'Enter at least one name.' };
+
+  const res = await adminGroup();
+  if ('error' in res) return { error: res.error };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from('cricket_players').insert(
+    clean.map((full_name) => ({ group_id: res.group.id, full_name, team_id: null })),
+  );
+  if (error) return { error: error.message };
+  revalidatePath('/cricket/pool');
+  revalidatePath('/cricket/pickup');
+  return { ok: true };
+}
+
+/** Remove a pool player (only if they aren't tied to a team). */
+export async function removePoolPlayerAction(playerId: string): Promise<ActionState> {
+  const res = await adminGroup();
+  if ('error' in res) return { error: res.error };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('cricket_players')
+    .delete()
+    .eq('id', playerId)
+    .eq('group_id', res.group.id)
+    .is('team_id', null);
+  if (error) return { error: error.message };
+  revalidatePath('/cricket/pool');
+  return { ok: true };
+}
+
+export interface PickupPayload {
+  sideAName: string;
+  sideBName: string;
+  sideA: string[];
+  sideB: string[];
+  shared: string[];
+  overs: number | null;
+  venue?: string | null;
+}
+
+/** Spin up a whole pickup match (two sides + squads) in one call. */
+export async function createPickupMatchAction(p: PickupPayload): Promise<ActionState> {
+  if (p.sideA.length === 0 || p.sideB.length === 0) {
+    return { error: 'Both sides need at least one player.' };
+  }
+  const res = await adminGroup();
+  if ('error' in res) return { error: res.error };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('create_pickup_match', {
+    p_group: res.group.id,
+    p_side_a_name: p.sideAName || 'Side A',
+    p_side_b_name: p.sideBName || 'Side B',
+    p_side_a: p.sideA,
+    p_side_b: p.sideB,
+    p_shared: p.shared,
+    p_overs: p.overs,
+    p_match_date: new Date().toISOString().slice(0, 10),
+    p_venue: p.venue ?? null,
+  });
+  if (error || !data) return { error: error?.message ?? 'Could not start the game.' };
+  redirect(`/cricket/matches/${data}`);
+}
+
 /** Record the toss and set who bats first (§7.1). */
 export async function recordTossAction(_p: ActionState, formData: FormData): Promise<ActionState> {
   const matchId = String(formData.get('match_id') ?? '');

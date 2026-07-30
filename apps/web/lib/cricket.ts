@@ -30,6 +30,18 @@ export async function getTeam(teamId: string): Promise<CricketTeam | null> {
   return data as CricketTeam | null;
 }
 
+/** The group's pickup pool: players not tied to a permanent team. */
+export async function getPoolPlayers(groupId: string): Promise<CricketPlayer[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('cricket_players')
+    .select('id, team_id, full_name, jersey_number, role, batting, bowling')
+    .eq('group_id', groupId)
+    .is('team_id', null)
+    .order('full_name', { ascending: true });
+  return (data ?? []) as CricketPlayer[];
+}
+
 export async function getTeamPlayers(teamId: string): Promise<CricketPlayer[]> {
   const supabase = await createClient();
   const { data } = await supabase
@@ -41,7 +53,7 @@ export async function getTeamPlayers(teamId: string): Promise<CricketPlayer[]> {
 }
 
 const MATCH_COLS =
-  'id, name, format, overs, players_per_side, venue, match_date, start_time, status, toss_winner_team_id, toss_decision, batting_first_team_id, scoring_control_user_id, team_a:team_a_id(id,name,short_name,color), team_b:team_b_id(id,name,short_name,color)';
+  'id, name, format, overs, players_per_side, match_type, venue, match_date, start_time, status, toss_winner_team_id, toss_decision, batting_first_team_id, scoring_control_user_id, team_a:team_a_id(id,name,short_name,color), team_b:team_b_id(id,name,short_name,color)';
 
 function mapMatch(m: Record<string, unknown>): CricketMatchView {
   return {
