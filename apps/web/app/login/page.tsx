@@ -8,6 +8,11 @@ import { ThemeToggle } from '@/components/theme-toggle';
 
 type Mode = 'password' | 'phone' | 'email';
 
+// Only email+password works until these providers are configured in Supabase:
+// OAuth apps (Google/Apple) and an SMS/SMTP provider (OTP). Flip to true once set up.
+const OAUTH_ENABLED = false;
+const OTP_ENABLED = false;
+
 export default function LoginPage() {
   const router = useRouter();
   // Construct the browser client lazily (never at render) so `next build` can
@@ -102,22 +107,24 @@ export default function LoginPage() {
         <h1 className="font-display text-xl font-extrabold tracking-tight">Welcome back</h1>
         <p className="mt-1 text-sm text-muted">Sign in to your sports community</p>
 
-        <div className="mt-5 flex gap-2 rounded-xl bg-surface-2 p-1 text-sm font-medium">
-          {(['password', 'phone', 'email'] as Mode[]).map((m) => (
-            <button
-              key={m}
-              onClick={() => {
-                setMode(m);
-                setSent(false);
-              }}
-              className={`flex-1 rounded-lg py-2 capitalize ${
-                mode === m ? 'bg-surface shadow-sm' : 'text-[var(--muted)]'
-              }`}
-            >
-              {m === 'password' ? 'Password' : `${m} OTP`}
-            </button>
-          ))}
-        </div>
+        {OTP_ENABLED && (
+          <div className="mt-5 flex gap-2 rounded-xl bg-surface-2 p-1 text-sm font-medium">
+            {(['password', 'phone', 'email'] as Mode[]).map((m) => (
+              <button
+                key={m}
+                onClick={() => {
+                  setMode(m);
+                  setSent(false);
+                }}
+                className={`flex-1 rounded-lg py-2 capitalize ${
+                  mode === m ? 'bg-surface shadow-sm' : 'text-[var(--muted)]'
+                }`}
+              >
+                {m === 'password' ? 'Password' : `${m} OTP`}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="mt-4 space-y-3">
           {mode === 'password' ? (
@@ -226,17 +233,21 @@ export default function LoginPage() {
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 
-          <div className="relative py-2 text-center">
-            <span className="bg-[var(--card)] px-2 text-xs text-[var(--muted)]">or continue with</span>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <button className="btn-outline" onClick={() => oauth('google')}>
-              Google
-            </button>
-            <button className="btn-outline" onClick={() => oauth('apple')}>
-              Apple
-            </button>
-          </div>
+          {OAUTH_ENABLED && (
+            <>
+              <div className="relative py-2 text-center">
+                <span className="bg-[var(--card)] px-2 text-xs text-[var(--muted)]">or continue with</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <button className="btn-outline" onClick={() => oauth('google')}>
+                  Google
+                </button>
+                <button className="btn-outline" onClick={() => oauth('apple')}>
+                  Apple
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </main>
