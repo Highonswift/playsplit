@@ -7,6 +7,8 @@ import {
   addPoolPlayersAction,
   removePoolPlayerAction,
   createPickupMatchAction,
+  claimPlayerAction,
+  setPlayerAccountAction,
 } from '@/app/(app)/cricket/actions';
 import { addMatchPlayerAction } from '@/app/(app)/cricket/matches/[id]/scoring-actions';
 
@@ -76,6 +78,115 @@ export function PoolManager({ players }: { players: Player[] }) {
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+/** Member self-claim: "Which player are you?" — links account to a pool name. */
+export function ClaimPlayerCard({
+  linked,
+  options,
+}: {
+  linked: { id: string; full_name: string } | null;
+  options: { id: string; full_name: string }[];
+}) {
+  const router = useRouter();
+  const [choice, setChoice] = useState('');
+  const [changing, setChanging] = useState(false);
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  const claim = (id: string) =>
+    start(async () => {
+      setError(null);
+      const res = await claimPlayerAction(id);
+      if (res.error) setError(res.error);
+      else {
+        setChanging(false);
+        router.refresh();
+      }
+    });
+
+  if (linked && !changing) {
+    return (
+      <div className="space-y-1">
+        <p className="text-sm">
+          You&apos;re playing as <span className="font-semibold">{linked.full_name}</span>.
+        </p>
+        <button className="text-sm font-medium text-primary-dark" onClick={() => setChanging(true)}>
+          Change
+        </button>
+      </div>
+    );
+  }
+
+  if (options.length === 0) {
+    return (
+      <p className="text-sm text-muted">
+        No unclaimed names left in the pool. Ask your group admin to add your name.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="stat-label">Which player are you?</p>
+      <select className="input" value={choice} onChange={(e) => setChoice(e.target.value)}>
+        <option value="">Select your name…</option>
+        {options.map((o) => (
+          <option key={o.id} value={o.id}>{o.full_name}</option>
+        ))}
+      </select>
+      {error && <p className="text-sm text-danger">{error}</p>}
+      <div className="flex gap-2">
+        <button className="btn flex-1" disabled={pending || !choice} onClick={() => claim(choice)}>
+          {pending ? 'Linking…' : "That's me"}
+        </button>
+        {changing && (
+          <button className="btn-outline" onClick={() => setChanging(false)}>Cancel</button>
+        )}
+      </div>
+      <p className="text-xs text-muted">Not listed? Ask the admin to add your name to the pool.</p>
+    </div>
+  );
+}
+
+/** Admin control: link a pool player to a member's account (or unlink). */
+export function AdminPlayerLink({
+  playerId,
+  currentUserId,
+  members,
+}: {
+  playerId: string;
+  currentUserId: string | null;
+  members: { user_id: string; full_name: string | null }[];
+}) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  const change = (userId: string | null) =>
+    start(async () => {
+      setError(null);
+      const res = await setPlayerAccountAction(playerId, userId);
+      if (res.error) setError(res.error);
+      else router.refresh();
+    });
+
+  return (
+    <div className="flex flex-col items-end gap-0.5">
+      <select
+        className="input h-8 w-40 py-0 text-xs"
+        value={currentUserId ?? ''}
+        disabled={pending}
+        onChange={(e) => change(e.target.value || null)}
+      >
+        <option value="">— no account —</option>
+        {members.map((m) => (
+          <option key={m.user_id} value={m.user_id}>{m.full_name ?? 'Member'}</option>
+        ))}
+      </select>
+      {error && <span className="text-[10px] text-danger">{error}</span>}
     </div>
   );
 }

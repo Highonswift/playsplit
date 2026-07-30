@@ -42,6 +42,46 @@ export async function getPoolPlayers(groupId: string): Promise<CricketPlayer[]> 
   return (data ?? []) as CricketPlayer[];
 }
 
+export interface PoolPlayerLink {
+  id: string;
+  full_name: string;
+  user_id: string | null;
+  account_name: string | null;
+}
+
+/** Pool players with their linked account (if any) — for admin management. */
+export async function getPoolPlayersWithLinks(groupId: string): Promise<PoolPlayerLink[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('cricket_players')
+    .select('id, full_name, user_id, profiles(full_name)')
+    .eq('group_id', groupId)
+    .is('team_id', null)
+    .order('full_name', { ascending: true });
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    full_name: r.full_name,
+    user_id: r.user_id,
+    account_name: (r.profiles as unknown as { full_name: string | null } | null)?.full_name ?? null,
+  }));
+}
+
+/** The pool player the signed-in user has claimed in this group (if any). */
+export async function getMyLinkedPlayer(
+  groupId: string,
+  userId: string,
+): Promise<{ id: string; full_name: string } | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('cricket_players')
+    .select('id, full_name')
+    .eq('group_id', groupId)
+    .eq('user_id', userId)
+    .is('team_id', null)
+    .maybeSingle();
+  return data ?? null;
+}
+
 export async function getTeamPlayers(teamId: string): Promise<CricketPlayer[]> {
   const supabase = await createClient();
   const { data } = await supabase

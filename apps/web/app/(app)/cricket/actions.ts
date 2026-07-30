@@ -186,6 +186,34 @@ export async function createPickupMatchAction(p: PickupPayload): Promise<ActionS
   redirect(`/cricket/matches/${data}`);
 }
 
+/** Member self-links their account to an unclaimed pool player. */
+export async function claimPlayerAction(playerId: string): Promise<ActionState> {
+  if (!playerId) return { error: 'Pick your name.' };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('claim_pool_player', { p_player: playerId });
+  if (error) return { error: error.message };
+  revalidatePath('/settings');
+  revalidatePath('/cricket/pool');
+  return { ok: true };
+}
+
+/** Admin links a pool player to a member's account, or unlinks (userId=null). */
+export async function setPlayerAccountAction(
+  playerId: string,
+  userId: string | null,
+): Promise<ActionState> {
+  const res = await adminGroup();
+  if ('error' in res) return { error: res.error };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('set_player_account', {
+    p_player: playerId,
+    p_user: userId,
+  });
+  if (error) return { error: error.message };
+  revalidatePath('/cricket/pool');
+  return { ok: true };
+}
+
 /** Record the toss and set who bats first (§7.1). */
 export async function recordTossAction(_p: ActionState, formData: FormData): Promise<ActionState> {
   const matchId = String(formData.get('match_id') ?? '');
