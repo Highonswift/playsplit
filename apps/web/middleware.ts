@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-const PUBLIC_PATHS = ['/login', '/auth', '/demo', '/_next', '/favicon', '/manifest', '/icons'];
+const PUBLIC_PATHS = ['/login', '/auth', '/join', '/demo', '/_next', '/favicon', '/manifest', '/icons'];
 
 /** Refresh the Supabase session and gate the (app) area behind auth. */
 export async function middleware(request: NextRequest) {

@@ -26,13 +26,21 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Where to land after auth. Supports ?next=/join/<code> (invite links);
+  // only internal paths are allowed, to avoid open redirects.
+  const nextDest = () => {
+    if (typeof window === 'undefined') return '/dashboard';
+    const n = new URLSearchParams(window.location.search).get('next');
+    return n && n.startsWith('/') && !n.startsWith('//') ? n : '/dashboard';
+  };
+
   async function signInPassword() {
     setError(null);
     setLoading(true);
     const { error } = await getSupabase().auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) setError(error.message);
-    else router.push('/dashboard');
+    else router.push(nextDest());
   }
 
   async function signUpPassword() {
@@ -48,7 +56,7 @@ export default function LoginPage() {
     });
     setLoading(false);
     if (error) setError(error.message);
-    else if (data.session) router.push('/dashboard');
+    else if (data.session) router.push(nextDest());
     else setInfo('Account created. Check your email to confirm, then sign in.');
   }
 
@@ -74,7 +82,7 @@ export default function LoginPage() {
     );
     setLoading(false);
     if (error) setError(error.message);
-    else router.push('/dashboard');
+    else router.push(nextDest());
   }
 
   async function oauth(provider: 'google' | 'apple') {
