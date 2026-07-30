@@ -19,10 +19,9 @@ import { Badge } from '@/components/ui';
 
 export default async function CricketMatchPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const group = await getActiveGroup();
+  // These three are independent — fetch together (getUser is request-cached).
+  const [group, m, user] = await Promise.all([getActiveGroup(), getCricketMatch(id), getUser()]);
   if (!group) redirect('/groups');
-
-  const m = await getCricketMatch(id);
   if (!m) notFound();
   const isAdmin = group.role !== 'player';
 
@@ -30,19 +29,21 @@ export default async function CricketMatchPage({ params }: { params: Promise<{ i
   const tossWinner = m.toss_winner_team_id === m.team_a.id ? m.team_a : m.team_b;
   const battingFirst = m.batting_first_team_id === m.team_a.id ? m.team_a : m.team_b;
   const bowlingFirst = m.batting_first_team_id === m.team_a.id ? m.team_b : m.team_a;
-
   const isPickup = m.match_type === 'pickup';
-  const scoring = tossDone
-    ? await getScoringData(id, m.players_per_side, m.overs, isPickup)
-    : null;
+
+  // One parallel wave for everything that only needs the match (not the
+  // derived innings state) — turns a chain of round-trips into a single hop.
+  const [scoring, officials, members, squadA, squadB, pool] = await Promise.all([
+    tossDone ? getScoringData(id, m.players_per_side, m.overs, isPickup) : Promise.resolve(null),
+    tossDone ? getOfficials(id) : Promise.resolve([]),
+    tossDone ? getGroupMembers(group.id) : Promise.resolve([]),
+    isPickup && tossDone ? getMatchSquad(id, m.team_a.id) : Promise.resolve([]),
+    isPickup && tossDone ? getMatchSquad(id, m.team_b.id) : Promise.resolve([]),
+    isPickup && tossDone && m.status !== 'completed' ? getPoolPlayers(group.id) : Promise.resolve([]),
+  ]);
   const teamName = (tid: string) =>
     tid === m.team_a.id ? m.team_a.short_name ?? m.team_a.name : m.team_b.short_name ?? m.team_b.name;
 
-  // Officials, current user & scoring control (Phase 4, §11).
-  const user = await getUser();
-  const [officials, members] = tossDone
-    ? await Promise.all([getOfficials(id), getGroupMembers(group.id)])
-    : [[], []];
   const canScore = isAdmin || officials.some((o) => o.user_id === user?.id && o.can_score);
   const controllerId = m.scoring_control_user_id;
   const iAmController = !!controllerId && controllerId === user?.id;
@@ -61,20 +62,17 @@ export default async function CricketMatchPage({ params }: { params: Promise<{ i
   const firstInnings = scoring?.allInnings?.[0] ?? null;
   const secondInningsNeeded =
     scoring && scoring.allInnings.length === 1 && scoring.state?.complete && m.status !== 'completed';
-  const battingFirstPlayers =
-    tossDone && !scoring?.innings ? await getSidePlayers(id, battingFirst.id, isPickup) : [];
-  const secondBattingPlayers = secondInningsNeeded
-    ? await getSidePlayers(id, bowlingFirst.id, isPickup)
-    : [];
+  const [battingFirstPlayers, secondBattingPlayers] = await Promise.all([
+    tossDone && !scoring?.innings ? getSidePlayers(id, battingFirst.id, isPickup) : Promise.resolve([]),
+    secondInningsNeeded ? getSidePlayers(id, bowlingFirst.id, isPickup) : Promise.resolve([]),
+  ]);
 
   // Pickup: pool players not yet on either side, for mid-match late joins.
-  const [squadA, squadB] = isPickup && tossDone
-    ? await Promise.all([getMatchSquad(id, m.team_a.id), getMatchSquad(id, m.team_b.id)])
-    : [[], []];
+  // Squads + pool were already fetched above, so this is just a filter.
   const inMatchIds = new Set([...squadA, ...squadB].map((p) => p.id));
   const latePool =
     isPickup && canScore && tossDone && m.status !== 'completed'
-      ? (await getPoolPlayers(group.id)).filter((p) => !inMatchIds.has(p.id))
+      ? pool.filter((p) => !inMatchIds.has(p.id))
       : [];
 
   return (
