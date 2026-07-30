@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { ArrowLeft, MapPin, CalendarDays, Coins } from 'lucide-react';
 import { getActiveGroup, getGroupMembers } from '@/lib/groups';
-import { getCricketMatch, getPoolPlayers, FORMAT_LABELS } from '@/lib/cricket';
+import { getCricketMatch, getPoolPlayers, getMyLinkedPlayer, FORMAT_LABELS } from '@/lib/cricket';
 import { getScoringData, getSidePlayers, getMatchSquad } from '@/lib/scoring';
 import { LatePlayerAdder } from '@/components/pickup';
 import { getOfficials } from '@/lib/officials';
@@ -33,18 +33,24 @@ export default async function CricketMatchPage({ params }: { params: Promise<{ i
 
   // One parallel wave for everything that only needs the match (not the
   // derived innings state) — turns a chain of round-trips into a single hop.
-  const [scoring, officials, members, squadA, squadB, pool] = await Promise.all([
+  const [scoring, officials, members, squadA, squadB, pool, myPlayer] = await Promise.all([
     tossDone ? getScoringData(id, m.players_per_side, m.overs, isPickup) : Promise.resolve(null),
     tossDone ? getOfficials(id) : Promise.resolve([]),
     tossDone ? getGroupMembers(group.id) : Promise.resolve([]),
     isPickup && tossDone ? getMatchSquad(id, m.team_a.id) : Promise.resolve([]),
     isPickup && tossDone ? getMatchSquad(id, m.team_b.id) : Promise.resolve([]),
     isPickup && tossDone && m.status !== 'completed' ? getPoolPlayers(group.id) : Promise.resolve([]),
+    isPickup && user ? getMyLinkedPlayer(group.id, user.id) : Promise.resolve(null),
   ]);
   const teamName = (tid: string) =>
     tid === m.team_a.id ? m.team_a.short_name ?? m.team_a.name : m.team_b.short_name ?? m.team_b.name;
 
-  const canScore = isAdmin || officials.some((o) => o.user_id === user?.id && o.can_score);
+  // Admins & assigned officials can score any match; for pickup games, so can
+  // any member who has claimed their player.
+  const canScore =
+    isAdmin ||
+    officials.some((o) => o.user_id === user?.id && o.can_score) ||
+    (isPickup && !!myPlayer);
   const controllerId = m.scoring_control_user_id;
   const iAmController = !!controllerId && controllerId === user?.id;
   const nameOf = (uid: string) =>
@@ -126,7 +132,7 @@ export default async function CricketMatchPage({ params }: { params: Promise<{ i
             <span className="font-semibold">{m.toss_decision === 'bat' ? 'bat' : 'bowl'}</span> first.{' '}
             <span className="font-semibold">{battingFirst.name}</span> bats first.
           </p>
-        ) : isAdmin ? (
+        ) : canScore ? (
           <TossForm matchId={m.id} teamA={m.team_a} teamB={m.team_b} />
         ) : (
           <p className="text-sm text-muted">Toss not recorded yet.</p>
@@ -218,7 +224,7 @@ export default async function CricketMatchPage({ params }: { params: Promise<{ i
           {scoring.state && <CommentaryFeed state={scoring.state} names={scoring.names} />}
 
           {/* Start innings 1 */}
-          {!scoring.innings && isAdmin && (
+          {!scoring.innings && canScore && (
             <div className="card">
               <h2 className="mb-3 font-semibold">Start 1st innings — {battingFirst.name} batting</h2>
               <StartInningsForm
@@ -232,7 +238,7 @@ export default async function CricketMatchPage({ params }: { params: Promise<{ i
           )}
 
           {/* Start innings 2 */}
-          {secondInningsNeeded && isAdmin && firstInnings && scoring.state && (
+          {secondInningsNeeded && canScore && firstInnings && scoring.state && (
             <div className="card">
               <h2 className="mb-3 font-semibold">Start 2nd innings — {bowlingFirst.name} chasing {scoring.state.totalRuns + 1}</h2>
               <StartInningsForm
@@ -247,7 +253,7 @@ export default async function CricketMatchPage({ params }: { params: Promise<{ i
           )}
 
           {/* Finish match */}
-          {isAdmin && scoring.allInnings.length >= 2 && scoring.state?.complete && m.status !== 'completed' && (
+          {canScore && scoring.allInnings.length >= 2 && scoring.state?.complete && m.status !== 'completed' && (
             <div className="card">
               <h2 className="mb-3 font-semibold">Finish match</h2>
               <FinishMatchButtons

@@ -162,17 +162,18 @@ export interface PickupPayload {
   venue?: string | null;
 }
 
-/** Spin up a whole pickup match (two sides + squads) in one call. */
+/** Spin up a whole pickup match (two sides + squads) in one call.
+ *  Allowed for admins OR members who've claimed a player — the RPC enforces it. */
 export async function createPickupMatchAction(p: PickupPayload): Promise<ActionState> {
   if (p.sideA.length === 0 || p.sideB.length === 0) {
     return { error: 'Both sides need at least one player.' };
   }
-  const res = await adminGroup();
-  if ('error' in res) return { error: res.error };
+  const group = await getActiveGroup();
+  if (!group) return { error: 'No active group.' };
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc('create_pickup_match', {
-    p_group: res.group.id,
+    p_group: group.id,
     p_side_a_name: p.sideAName || 'Side A',
     p_side_b_name: p.sideBName || 'Side B',
     p_side_a: p.sideA,
@@ -221,30 +222,13 @@ export async function recordTossAction(_p: ActionState, formData: FormData): Pro
   const decision = String(formData.get('toss_decision') ?? 'bat') as 'bat' | 'bowl';
   if (!matchId || !winnerId) return { error: 'Select the toss winner and decision.' };
 
-  const res = await adminGroup();
-  if ('error' in res) return { error: res.error };
-
+  // Gated on scoring rights (admin/official/claimed pickup member) via the RPC.
   const supabase = await createClient();
-  const { data: match } = await supabase
-    .from('cricket_matches')
-    .select('team_a_id, team_b_id')
-    .eq('id', matchId)
-    .single();
-  if (!match) return { error: 'Match not found.' };
-
-  const other = winnerId === match.team_a_id ? match.team_b_id : match.team_a_id;
-  const battingFirst = decision === 'bat' ? winnerId : other;
-
-  const { error } = await supabase
-    .from('cricket_matches')
-    .update({
-      toss_winner_team_id: winnerId,
-      toss_decision: decision,
-      batting_first_team_id: battingFirst,
-      toss_at: new Date().toISOString(),
-      status: 'toss',
-    })
-    .eq('id', matchId);
+  const { error } = await supabase.rpc('record_toss', {
+    p_match: matchId,
+    p_winner: winnerId,
+    p_decision: decision,
+  });
   if (error) return { error: error.message };
   revalidatePath(`/cricket/matches/${matchId}`);
   return { ok: true };

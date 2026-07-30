@@ -2,8 +2,9 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Users, ChevronRight, Shield, Trophy, Medal, Zap, UsersRound } from 'lucide-react';
 import { getActiveGroup } from '@/lib/groups';
-import { getTeams, getCricketMatches, FORMAT_LABELS } from '@/lib/cricket';
+import { getTeams, getCricketMatches, getMyLinkedPlayer, FORMAT_LABELS } from '@/lib/cricket';
 import { getTournaments } from '@/lib/tournaments';
+import { getUser } from '@/lib/supabase/server';
 import { CreateTeamForm, CreateMatchForm } from '@/components/cricket-forms';
 import { Badge, EmptyState, LivePill } from '@/components/ui';
 
@@ -16,10 +17,14 @@ export default async function CricketPage() {
   const group = await getActiveGroup();
   if (!group) redirect('/groups');
 
-  const [teams, matches, tournaments] = await Promise.all([
+  const user = await getUser();
+  const [teams, matches, tournaments, myPlayer] = await Promise.all([
     getTeams(group.id), getCricketMatches(group.id), getTournaments(group.id),
+    user ? getMyLinkedPlayer(group.id, user.id) : Promise.resolve(null),
   ]);
   const isAdmin = group.role !== 'player';
+  // Admins and members who've claimed their player can start & score pickup games.
+  const canStartGame = isAdmin || !!myPlayer;
   const teamRefs = teams.map((t) => ({ id: t.id, name: t.name, short_name: t.short_name, color: t.color }));
   const tournamentRefs = tournaments.map((t) => ({ id: t.id, name: t.name }));
 
@@ -31,34 +36,29 @@ export default async function CricketPage() {
       </div>
 
       {/* Pickup cricket: whoever turns up, split into two sides, play. */}
-      {isAdmin && (
-        <div className="grid grid-cols-2 gap-3">
-          <Link
-            href="/cricket/pickup"
-            className="card col-span-2 flex items-center gap-3 bg-primary text-white"
-          >
-            <Zap size={22} />
-            <div>
-              <p className="font-display font-bold">Start a game</p>
-              <p className="text-xs opacity-90">Pick who&apos;s here, auto-split into two sides, play</p>
-            </div>
-            <ChevronRight size={18} className="ml-auto" />
-          </Link>
-          <Link href="/cricket/pool" className="card flex items-center gap-2 font-semibold">
-            <UsersRound size={18} className="text-primary" /> Player pool
-          </Link>
-          <Link href="/cricket/stats" className="card flex items-center gap-2 font-semibold">
-            <Trophy size={18} className="text-warning" /> Statistics
-          </Link>
-        </div>
+      {canStartGame && (
+        <Link
+          href="/cricket/pickup"
+          className="card flex items-center gap-3 bg-primary text-white"
+        >
+          <Zap size={22} />
+          <div>
+            <p className="font-display font-bold">Start a game</p>
+            <p className="text-xs opacity-90">Pick who&apos;s here, auto-split into two sides, play</p>
+          </div>
+          <ChevronRight size={18} className="ml-auto" />
+        </Link>
       )}
 
       <div className="grid grid-cols-2 gap-3">
-        {!isAdmin && (
-          <Link href="/cricket/stats" className="card flex items-center gap-2 font-semibold">
-            <Trophy size={18} className="text-warning" /> Statistics
+        {isAdmin && (
+          <Link href="/cricket/pool" className="card flex items-center gap-2 font-semibold">
+            <UsersRound size={18} className="text-primary" /> Player pool
           </Link>
         )}
+        <Link href="/cricket/stats" className="card flex items-center gap-2 font-semibold">
+          <Trophy size={18} className="text-warning" /> Statistics
+        </Link>
         <Link href="/cricket/tournaments" className="card flex items-center gap-2 font-semibold">
           <Medal size={18} className="text-primary" /> Tournaments
         </Link>
