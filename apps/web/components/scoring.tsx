@@ -246,13 +246,18 @@ export function ScoringPad({
         </button>
       </div>
 
-      {/* Extras */}
+      {/* Extras. Wide is one tap (turf rule: a plain +1, no byes run off it);
+          the others still ask for runs since they can carry runs. */}
       <div className="grid grid-cols-4 gap-2">
         {(['wide', 'noball', 'bye', 'legbye'] as const).map((ex) => (
           <button
             key={ex}
             disabled={pending || !bowlerId}
-            onClick={() => setPendingExtra(pendingExtra === ex ? null : ex)}
+            onClick={() =>
+              ex === 'wide'
+                ? send({ runsBat: 0, extra: 'wide', extraRuns: 0, wicket: null })
+                : setPendingExtra(pendingExtra === ex ? null : ex)
+            }
             className={`rounded-xl py-3 text-sm font-semibold transition active:scale-95 disabled:opacity-40 ${
               pendingExtra === ex ? 'bg-warning text-white' : 'bg-surface-2 text-muted'
             }`}
