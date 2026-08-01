@@ -76,11 +76,20 @@ export default async function SettingsPage() {
             <ListChecks size={16} className="text-[var(--muted)]" />
             <h2 className="font-semibold">Cricket rules</h2>
           </div>
-          <CricketRuleToggle
-            label="Last man stands"
-            hint="A lone last batter keeps batting alone (no non-striker, keeps strike) until out."
-            enabled={!!group.cricket_rules?.last_man_stands}
-          />
+          <div className="space-y-4">
+            <CricketRuleToggle
+              rule="last_man_stands"
+              label="Last man stands"
+              hint="A lone last batter keeps batting alone (no non-striker, keeps strike) until out."
+              enabled={!!group.cricket_rules?.last_man_stands}
+            />
+            <CricketRuleToggle
+              rule="no_byes"
+              label="No byes"
+              hint="Turf rule: hide Bye and Leg-bye from the scoring pad (you don't run byes)."
+              enabled={!!group.cricket_rules?.no_byes}
+            />
+          </div>
         </div>
       )}
 

@@ -165,12 +165,14 @@ export function LiveScoreboard({
 
 /* ---------------- Umpire scoring pad ---------------- */
 export function ScoringPad({
-  matchId, inningsId, state, bowlingPlayers, battingPlayers, names, deliveryCount,
+  matchId, inningsId, state, bowlingPlayers, battingPlayers, names, deliveryCount, hideByes = false,
 }: {
   matchId: string; inningsId: string; state: InningsState;
   bowlingPlayers: PlayerRef[]; battingPlayers: PlayerRef[]; names: Record<string, string>;
-  deliveryCount: number;
+  deliveryCount: number; hideByes?: boolean;
 }) {
+  const EXTRAS: readonly ('wide' | 'noball' | 'bye' | 'legbye')[] =
+    hideByes ? ['wide', 'noball'] : ['wide', 'noball', 'bye', 'legbye'];
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -249,7 +251,7 @@ export function ScoringPad({
       {/* Extras. Wide is one tap (turf rule: a plain +1, no byes run off it);
           the others still ask for runs since they can carry runs. */}
       <div className="grid grid-cols-4 gap-2">
-        {(['wide', 'noball', 'bye', 'legbye'] as const).map((ex) => (
+        {EXTRAS.map((ex) => (
           <button
             key={ex}
             disabled={pending || !bowlerId}

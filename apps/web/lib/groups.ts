@@ -6,6 +6,7 @@ export type GroupRole = 'platform_admin' | 'group_admin' | 'player';
 
 export interface CricketRules {
   last_man_stands?: boolean;
+  no_byes?: boolean;
 }
 
 export interface GroupSummary {

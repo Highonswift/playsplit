@@ -14,10 +14,12 @@ const INITIAL: ActionState = {};
 
 /** Admin toggle for a per-group cricket rule. */
 export function CricketRuleToggle({
+  rule,
   label,
   hint,
   enabled,
 }: {
+  rule: 'last_man_stands' | 'no_byes';
   label: string;
   hint: string;
   enabled: boolean;
@@ -32,7 +34,7 @@ export function CricketRuleToggle({
       setError(null);
       const next = !on;
       setOn(next); // optimistic
-      const res = await updateCricketRuleAction('last_man_stands', next);
+      const res = await updateCricketRuleAction(rule, next);
       if (res.error) {
         setOn(!next);
         setError(res.error);

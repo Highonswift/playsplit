@@ -201,6 +201,7 @@ export default async function CricketMatchPage({ params }: { params: Promise<{ i
                     battingPlayers={scoring.battingPlayers}
                     names={scoring.names}
                     deliveryCount={scoring.deliveryCount}
+                    hideByes={!!group.cricket_rules?.no_byes}
                   />
                 </div>
               )}
