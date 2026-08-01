@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { ArrowLeft, MapPin, CalendarDays, Coins } from 'lucide-react';
+import { ArrowLeft, MapPin, CalendarDays, Coins, FileText } from 'lucide-react';
 import { getActiveGroup, getGroupMembers } from '@/lib/groups';
 import { getCricketMatch, getPoolPlayers, getMyLinkedPlayer, FORMAT_LABELS } from '@/lib/cricket';
 import { getScoringData, getSidePlayers, getMatchSquad, getInningsCards } from '@/lib/scoring';
@@ -11,7 +11,7 @@ import { TossForm } from '@/components/cricket-forms';
 import { winProbability } from '@playsplit/cricket';
 import { StartInningsForm, LiveScoreboard, ScoringPad, MatchTabs } from '@/components/scoring';
 import { LiveSync, ControlBar } from '@/components/cricket-realtime';
-import { ExportBar, OfflineBanner } from '@/components/cricket-export';
+import { OfflineBanner } from '@/components/cricket-export';
 import { OfficialsManager } from '@/components/officials';
 import { FinishMatchButtons } from '@/components/finish-match';
 import { Badge } from '@/components/ui';
@@ -221,9 +221,11 @@ export default async function CricketMatchPage({ params }: { params: Promise<{ i
             </>
           )}
 
-          {/* Export & share */}
+          {/* Full scorecard, share & PDF export */}
           {scoring.state && scoring.state.timeline.length > 0 && (
-            <ExportBar state={scoring.state} names={scoring.names} title={`${m.team_a.name} vs ${m.team_b.name}`} />
+            <Link href={`/cricket/matches/${m.id}/scorecard`} className="btn-outline w-full">
+              <FileText size={15} /> Full scorecard · share · PDF
+            </Link>
           )}
 
           {/* Scorecard / Commentary — top-level tabs (Cricbuzz-style) */}

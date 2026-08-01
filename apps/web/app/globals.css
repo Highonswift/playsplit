@@ -158,3 +158,11 @@ body {
     @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold;
   }
 }
+
+/* Print / Save-as-PDF: drop the app chrome, let the scorecard fill the page. */
+@media print {
+  header, nav, aside { display: none !important; }
+  main { max-width: 100% !important; padding: 0 !important; }
+  .card { border: 1px solid #ddd !important; box-shadow: none !important; break-inside: avoid; }
+  body { background: #fff !important; }
+}

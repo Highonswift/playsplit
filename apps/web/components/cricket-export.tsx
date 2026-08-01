@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Download, Share2, Check, WifiOff } from 'lucide-react';
+import { Download, Share2, Check, WifiOff, Printer } from 'lucide-react';
 import type { InningsState } from '@playsplit/cricket';
 
 const oversStr = (b: number) => `${Math.floor(b / 6)}.${b % 6}`;
@@ -58,6 +58,51 @@ export function ExportBar({
       <button className="btn-outline flex-1" onClick={share}>
         {copied ? <Check size={15} className="text-primary" /> : <Share2 size={15} />}
         {copied ? 'Link copied' : 'Share'}
+      </button>
+    </div>
+  );
+}
+
+/** Export the FULL match (both innings): print/PDF, WhatsApp text share, CSV. */
+export function ScorecardExportBar({
+  csv, csvName, shareText, matchPath,
+}: {
+  csv: string; csvName: string; shareText: string; matchPath: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  function downloadCsv() {
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = csvName;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function share() {
+    const url = window.location.origin + matchPath;
+    const text = `${shareText}\n${url}`;
+    if (navigator.share) {
+      try { await navigator.share({ title: 'Scorecard', text }); return; } catch { /* copy */ }
+    }
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+
+  return (
+    <div className="flex gap-2 print:hidden">
+      <button className="btn flex-1" onClick={() => window.print()}>
+        <Printer size={15} /> Save PDF
+      </button>
+      <button className="btn-outline flex-1" onClick={share}>
+        {copied ? <Check size={15} className="text-primary" /> : <Share2 size={15} />}
+        {copied ? 'Copied' : 'Share'}
+      </button>
+      <button className="btn-outline" onClick={downloadCsv} aria-label="Download CSV">
+        <Download size={15} /> CSV
       </button>
     </div>
   );
