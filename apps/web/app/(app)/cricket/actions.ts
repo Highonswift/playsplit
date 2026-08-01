@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveGroup } from '@/lib/groups';
+import { getCricketMatch } from '@/lib/cricket';
 import type { CricketFormat, CricketRole } from '@/lib/cricket-types';
 
 export interface ActionState {
@@ -213,6 +214,40 @@ export async function setPlayerAccountAction(
   if (error) return { error: error.message };
   revalidatePath('/cricket/pool');
   return { ok: true };
+}
+
+/**
+ * Start a fresh pickup game with the SAME teams as a previous one — for turf
+ * days where the same sides play 3–4 games back to back. Reuses the pool
+ * players (so their stats keep accumulating) on the same sides.
+ */
+export async function rematchAction(sourceMatchId: string): Promise<ActionState> {
+  const m = await getCricketMatch(sourceMatchId);
+  if (!m || m.match_type !== 'pickup') return { error: 'Can only rematch a pickup game.' };
+
+  const supabase = await createClient();
+  const { data: sq } = await supabase
+    .from('cricket_match_players')
+    .select('team_id, player_id, is_shared, batting_order')
+    .eq('match_id', sourceMatchId)
+    .order('batting_order', { ascending: true });
+  const rows = (sq ?? []) as { team_id: string; player_id: string; is_shared: boolean }[];
+  if (rows.length === 0) return { error: 'That game has no squads to reuse.' };
+
+  const shared = [...new Set(rows.filter((r) => r.is_shared).map((r) => r.player_id))];
+  const sharedSet = new Set(shared);
+  const sideA = rows.filter((r) => r.team_id === m.team_a.id && !sharedSet.has(r.player_id)).map((r) => r.player_id);
+  const sideB = rows.filter((r) => r.team_id === m.team_b.id && !sharedSet.has(r.player_id)).map((r) => r.player_id);
+
+  return createPickupMatchAction({
+    sideAName: m.team_a.name,
+    sideBName: m.team_b.name,
+    sideA,
+    sideB,
+    shared,
+    overs: m.overs,
+    venue: m.venue,
+  });
 }
 
 /** Record the toss and set who bats first (§7.1). */

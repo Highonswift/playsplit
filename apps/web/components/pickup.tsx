@@ -2,13 +2,14 @@
 
 import { useState, useTransition, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Shuffle, X, Plus, Zap } from 'lucide-react';
+import { Shuffle, X, Plus, Zap, RefreshCw } from 'lucide-react';
 import {
   addPoolPlayersAction,
   removePoolPlayerAction,
   createPickupMatchAction,
   claimPlayerAction,
   setPlayerAccountAction,
+  rematchAction,
 } from '@/app/(app)/cricket/actions';
 import { addMatchPlayerAction } from '@/app/(app)/cricket/matches/[id]/scoring-actions';
 
@@ -78,6 +79,32 @@ export function PoolManager({ players }: { players: Player[] }) {
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+/** Start another pickup game with the same two sides (turf back-to-back games). */
+export function RematchButton({ matchId }: { matchId: string }) {
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  return (
+    <div className="space-y-1">
+      <button
+        className="btn w-full"
+        disabled={pending}
+        onClick={() =>
+          start(async () => {
+            setError(null);
+            const res = await rematchAction(matchId);
+            if (res?.error) setError(res.error);
+            // On success the action redirects to the new match.
+          })
+        }
+      >
+        <RefreshCw size={16} /> {pending ? 'Starting…' : 'Rematch — same teams'}
+      </button>
+      {error && <p className="text-sm text-danger">{error}</p>}
     </div>
   );
 }

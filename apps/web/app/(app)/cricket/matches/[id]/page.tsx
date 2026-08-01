@@ -4,7 +4,7 @@ import { ArrowLeft, MapPin, CalendarDays, Coins, FileText } from 'lucide-react';
 import { getActiveGroup, getGroupMembers } from '@/lib/groups';
 import { getCricketMatch, getPoolPlayers, getMyLinkedPlayer, FORMAT_LABELS } from '@/lib/cricket';
 import { getScoringData, getSidePlayers, getMatchSquad, getInningsCards } from '@/lib/scoring';
-import { LatePlayerAdder } from '@/components/pickup';
+import { LatePlayerAdder, RematchButton } from '@/components/pickup';
 import { getOfficials } from '@/lib/officials';
 import { getUser } from '@/lib/supabase/server';
 import { TossForm } from '@/components/cricket-forms';
@@ -127,6 +127,14 @@ export default async function CricketMatchPage({ params }: { params: Promise<{ i
           </p>
         )}
       </div>
+
+      {/* Play again with the same two sides (turf back-to-back games) */}
+      {isPickup && canScore && m.status === 'completed' && (
+        <div className="card">
+          <RematchButton matchId={m.id} />
+          <p className="mt-2 text-center text-xs text-muted">Same teams, fresh toss.</p>
+        </div>
+      )}
 
       {/* Toss */}
       <div className="card">
