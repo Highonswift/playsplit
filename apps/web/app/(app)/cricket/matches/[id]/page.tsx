@@ -9,9 +9,8 @@ import { getOfficials } from '@/lib/officials';
 import { getUser } from '@/lib/supabase/server';
 import { TossForm } from '@/components/cricket-forms';
 import { winProbability } from '@playsplit/cricket';
-import { StartInningsForm, LiveScoreboard, ScoringPad, ScorecardTabs } from '@/components/scoring';
+import { StartInningsForm, LiveScoreboard, ScoringPad, MatchTabs } from '@/components/scoring';
 import { LiveSync, ControlBar } from '@/components/cricket-realtime';
-import { CommentaryFeed } from '@/components/commentary';
 import { ExportBar, OfflineBanner } from '@/components/cricket-export';
 import { OfficialsManager } from '@/components/officials';
 import { FinishMatchButtons } from '@/components/finish-match';
@@ -227,11 +226,14 @@ export default async function CricketMatchPage({ params }: { params: Promise<{ i
             <ExportBar state={scoring.state} names={scoring.names} title={`${m.team_a.name} vs ${m.team_b.name}`} />
           )}
 
-          {/* Full scorecard — both innings, Cricbuzz-style tabs */}
-          {scorecardTabs.length > 0 && <ScorecardTabs innings={scorecardTabs} />}
-
-          {/* Commentary */}
-          {scoring.state && <CommentaryFeed state={scoring.state} names={scoring.names} />}
+          {/* Scorecard / Commentary — top-level tabs (Cricbuzz-style) */}
+          {scorecardTabs.length > 0 && (
+            <MatchTabs
+              innings={scorecardTabs}
+              commentaryState={scoring.state}
+              commentaryNames={scoring.names}
+            />
+          )}
 
           {/* Start innings 1 */}
           {!scoring.innings && canScore && (

@@ -12,6 +12,7 @@ import {
   type DeliveryPayload,
 } from '@/app/(app)/cricket/matches/[id]/scoring-actions';
 import { Badge, LivePill } from '@/components/ui';
+import { CommentaryFeed } from '@/components/commentary';
 
 type PlayerRef = { id: string; full_name: string; role: string; is_shared?: boolean };
 const INITIAL: Result = {};
@@ -552,6 +553,45 @@ export function ScorecardTabs({ innings }: { innings: InningsTab[] }) {
         battingTeamName={cur.battingTeamName}
         battingSquad={cur.battingSquad}
       />
+    </div>
+  );
+}
+
+/* ---------------- Top-level Scorecard / Commentary tabs (Cricbuzz-style) ---------------- */
+export function MatchTabs({
+  innings,
+  commentaryState,
+  commentaryNames,
+}: {
+  innings: InningsTab[];
+  commentaryState: InningsState | null;
+  commentaryNames: Record<string, string>;
+}) {
+  const [tab, setTab] = useState<'scorecard' | 'commentary'>('scorecard');
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2 rounded-xl bg-surface-2 p-1 text-sm font-medium">
+        {(['scorecard', 'commentary'] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`flex-1 rounded-lg py-2 capitalize transition ${
+              tab === t ? 'bg-surface shadow-sm' : 'text-muted'
+            }`}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'scorecard' ? (
+        <ScorecardTabs innings={innings} />
+      ) : commentaryState ? (
+        <CommentaryFeed state={commentaryState} names={commentaryNames} />
+      ) : (
+        <p className="card text-center text-sm text-muted">No commentary yet.</p>
+      )}
     </div>
   );
 }
