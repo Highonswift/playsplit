@@ -367,12 +367,50 @@ function WicketModal({
 }
 
 /* ---------------- Scorecard ---------------- */
-export function Scorecard({ state, names }: { state: InningsState; names: Record<string, string> }) {
+type BatCardT = InningsState['batting'][number];
+
+/** Cricbuzz-style dismissal text, e.g. "c Kohli b Bumrah", "b Shami", "run out". */
+function formatDismissal(b: BatCardT, nm: (id?: string | null) => string): string {
+  if (!b.out) return '';
+  const bowler = b.outBowlerId ? nm(b.outBowlerId) : '';
+  const fielder = b.outFielderId ? nm(b.outFielderId) : '';
+  switch (b.dismissalType) {
+    case 'bowled': return `b ${bowler}`.trim();
+    case 'lbw': return `lbw b ${bowler}`.trim();
+    case 'caught': return fielder ? `c ${fielder} b ${bowler}`.trim() : `c & b ${bowler}`.trim();
+    case 'stumped': return `st ${fielder} b ${bowler}`.trim();
+    case 'run_out': return fielder ? `run out (${fielder})` : 'run out';
+    case 'hit_wicket': return `hit wkt b ${bowler}`.trim();
+    default: return b.dismissal ?? 'out';
+  }
+}
+
+export function Scorecard({
+  state, names, battingTeamName, battingSquad,
+}: {
+  state: InningsState;
+  names: Record<string, string>;
+  battingTeamName?: string;
+  battingSquad?: { id: string; full_name: string }[];
+}) {
   const nm = (id?: string | null) => (id ? names[id] ?? 'Player' : '—');
+  const atCrease = new Set([state.strikerId, state.nonStrikerId].filter(Boolean) as string[]);
+  const didNotBat = (battingSquad ?? []).filter((p) => !state.batting.some((b) => b.playerId === p.id));
+
   return (
     <div className="space-y-4">
       <div className="card">
-        <h3 className="mb-2 font-semibold">Batting</h3>
+        {battingTeamName ? (
+          <div className="mb-3 flex items-baseline justify-between">
+            <h3 className="font-display font-bold">{battingTeamName}</h3>
+            <span className="font-display text-lg font-extrabold tabular">
+              {state.totalRuns}/{state.wickets}
+              <span className="ml-1 text-xs font-normal text-muted">({state.oversText} ov)</span>
+            </span>
+          </div>
+        ) : (
+          <h3 className="mb-2 font-semibold">Batting</h3>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -386,21 +424,25 @@ export function Scorecard({ state, names }: { state: InningsState; names: Record
               </tr>
             </thead>
             <tbody>
-              {state.batting.map((b) => (
-                <tr key={b.playerId} className="border-t border-divider">
-                  <td className="py-1.5">
-                    <span className="font-medium">{nm(b.playerId)}</span>
-                    <span className="ml-2 text-xs text-muted">
-                      {b.out ? b.dismissal : b.balls > 0 || b.playerId === state.strikerId || b.playerId === state.nonStrikerId ? 'not out' : ''}
-                    </span>
-                  </td>
-                  <td className="py-1.5 text-right font-semibold tabular">{b.runs}</td>
-                  <td className="py-1.5 text-right tabular">{b.balls}</td>
-                  <td className="py-1.5 text-right tabular">{b.fours}</td>
-                  <td className="py-1.5 text-right tabular">{b.sixes}</td>
-                  <td className="py-1.5 text-right tabular text-muted">{b.strikeRate}</td>
-                </tr>
-              ))}
+              {state.batting.map((b) => {
+                const onStrike = b.playerId === state.strikerId && !state.complete;
+                const note = b.out ? formatDismissal(b, nm) : atCrease.has(b.playerId) ? 'not out' : '';
+                return (
+                  <tr key={b.playerId} className="border-t border-divider align-top">
+                    <td className="py-1.5">
+                      <div className="font-medium">
+                        {nm(b.playerId)}{onStrike ? ' *' : ''}
+                      </div>
+                      {note && <div className="text-xs text-muted">{note}</div>}
+                    </td>
+                    <td className="py-1.5 text-right font-semibold tabular">{b.runs}</td>
+                    <td className="py-1.5 text-right tabular">{b.balls}</td>
+                    <td className="py-1.5 text-right tabular">{b.fours}</td>
+                    <td className="py-1.5 text-right tabular">{b.sixes}</td>
+                    <td className="py-1.5 text-right tabular text-muted">{b.strikeRate}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -412,6 +454,12 @@ export function Scorecard({ state, names }: { state: InningsState; names: Record
           <span>Total</span>
           <span className="tabular">{state.totalRuns}/{state.wickets} ({state.oversText} ov)</span>
         </p>
+        {didNotBat.length > 0 && (
+          <p className="mt-2 border-t border-divider pt-2 text-xs text-muted">
+            <span className="font-semibold">Did not bat: </span>
+            {didNotBat.map((p) => p.full_name).join(', ')}
+          </p>
+        )}
       </div>
 
       <div className="card">
@@ -458,6 +506,52 @@ export function Scorecard({ state, names }: { state: InningsState; names: Record
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ---------------- Full scorecard with innings tabs (Cricbuzz-style) ---------------- */
+export interface InningsTab {
+  number: number;
+  battingTeamName: string;
+  state: InningsState;
+  names: Record<string, string>;
+  battingSquad: { id: string; full_name: string }[];
+}
+
+export function ScorecardTabs({ innings }: { innings: InningsTab[] }) {
+  // Default to the latest innings; let players tap back to earlier ones.
+  const [active, setActive] = useState(Math.max(0, innings.length - 1));
+  if (innings.length === 0) return null;
+  const cur = innings[Math.min(active, innings.length - 1)]!;
+
+  return (
+    <div className="space-y-4">
+      {innings.length > 1 && (
+        <div className="grid grid-cols-2 gap-2">
+          {innings.map((inn, i) => (
+            <button
+              key={inn.number}
+              onClick={() => setActive(i)}
+              className={`rounded-xl border px-3 py-2 text-left transition ${
+                i === active ? 'border-primary bg-primary-soft' : 'border-border bg-surface'
+              }`}
+            >
+              <p className="truncate text-xs text-muted">{inn.battingTeamName}</p>
+              <p className="font-display font-bold tabular">
+                {inn.state.totalRuns}/{inn.state.wickets}
+                <span className="ml-1 text-xs font-normal text-muted">({inn.state.oversText})</span>
+              </p>
+            </button>
+          ))}
+        </div>
+      )}
+      <Scorecard
+        state={cur.state}
+        names={cur.names}
+        battingTeamName={cur.battingTeamName}
+        battingSquad={cur.battingSquad}
+      />
     </div>
   );
 }

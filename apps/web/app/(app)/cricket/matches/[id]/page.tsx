@@ -3,13 +3,13 @@ import { notFound, redirect } from 'next/navigation';
 import { ArrowLeft, MapPin, CalendarDays, Coins } from 'lucide-react';
 import { getActiveGroup, getGroupMembers } from '@/lib/groups';
 import { getCricketMatch, getPoolPlayers, getMyLinkedPlayer, FORMAT_LABELS } from '@/lib/cricket';
-import { getScoringData, getSidePlayers, getMatchSquad } from '@/lib/scoring';
+import { getScoringData, getSidePlayers, getMatchSquad, getInningsCards } from '@/lib/scoring';
 import { LatePlayerAdder } from '@/components/pickup';
 import { getOfficials } from '@/lib/officials';
 import { getUser } from '@/lib/supabase/server';
 import { TossForm } from '@/components/cricket-forms';
 import { winProbability } from '@playsplit/cricket';
-import { StartInningsForm, LiveScoreboard, ScoringPad, Scorecard } from '@/components/scoring';
+import { StartInningsForm, LiveScoreboard, ScoringPad, ScorecardTabs } from '@/components/scoring';
 import { LiveSync, ControlBar } from '@/components/cricket-realtime';
 import { CommentaryFeed } from '@/components/commentary';
 import { ExportBar, OfflineBanner } from '@/components/cricket-export';
@@ -30,18 +30,27 @@ export default async function CricketMatchPage({ params }: { params: Promise<{ i
   const battingFirst = m.batting_first_team_id === m.team_a.id ? m.team_a : m.team_b;
   const bowlingFirst = m.batting_first_team_id === m.team_a.id ? m.team_b : m.team_a;
   const isPickup = m.match_type === 'pickup';
+  const lastManStands = !!group.cricket_rules?.last_man_stands;
 
   // One parallel wave for everything that only needs the match (not the
   // derived innings state) — turns a chain of round-trips into a single hop.
-  const [scoring, officials, members, squadA, squadB, pool, myPlayer] = await Promise.all([
-    tossDone ? getScoringData(id, m.players_per_side, m.overs, isPickup, !!group.cricket_rules?.last_man_stands) : Promise.resolve(null),
+  const [scoring, officials, members, squadA, squadB, pool, myPlayer, inningsCards] = await Promise.all([
+    tossDone ? getScoringData(id, m.players_per_side, m.overs, isPickup, lastManStands) : Promise.resolve(null),
     tossDone ? getOfficials(id) : Promise.resolve([]),
     tossDone ? getGroupMembers(group.id) : Promise.resolve([]),
     isPickup && tossDone ? getMatchSquad(id, m.team_a.id) : Promise.resolve([]),
     isPickup && tossDone ? getMatchSquad(id, m.team_b.id) : Promise.resolve([]),
     isPickup && tossDone && m.status !== 'completed' ? getPoolPlayers(group.id) : Promise.resolve([]),
     isPickup && user ? getMyLinkedPlayer(group.id, user.id) : Promise.resolve(null),
+    tossDone ? getInningsCards(id, m.players_per_side, m.overs, isPickup, lastManStands) : Promise.resolve([]),
   ]);
+  const scorecardTabs = inningsCards.map((c) => ({
+    number: c.number,
+    battingTeamName: c.battingTeamId === m.team_a.id ? m.team_a.name : m.team_b.name,
+    state: c.state,
+    names: c.names,
+    battingSquad: c.battingSquad,
+  }));
   const teamName = (tid: string) =>
     tid === m.team_a.id ? m.team_a.short_name ?? m.team_a.name : m.team_b.short_name ?? m.team_b.name;
 
@@ -218,8 +227,8 @@ export default async function CricketMatchPage({ params }: { params: Promise<{ i
             <ExportBar state={scoring.state} names={scoring.names} title={`${m.team_a.name} vs ${m.team_b.name}`} />
           )}
 
-          {/* Scorecard */}
-          {scoring.state && <Scorecard state={scoring.state} names={scoring.names} />}
+          {/* Full scorecard — both innings, Cricbuzz-style tabs */}
+          {scorecardTabs.length > 0 && <ScorecardTabs innings={scorecardTabs} />}
 
           {/* Commentary */}
           {scoring.state && <CommentaryFeed state={scoring.state} names={scoring.names} />}
