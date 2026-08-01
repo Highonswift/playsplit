@@ -333,12 +333,18 @@ function WicketModal({
             </select>
           </div>
         )}
-        <div>
-          <label className="label">New batter</label>
-          <select className="input" value={incomingBatterId} onChange={(e) => setIncomingBatterId(e.target.value)}>
-            {available.map((p) => <option key={p.id} value={p.id}>{plabel(p)}</option>)}
-          </select>
-        </div>
+        {available.length > 0 ? (
+          <div>
+            <label className="label">New batter</label>
+            <select className="input" value={incomingBatterId} onChange={(e) => setIncomingBatterId(e.target.value)}>
+              {available.map((p) => <option key={p.id} value={p.id}>{plabel(p)}</option>)}
+            </select>
+          </div>
+        ) : (
+          <p className="rounded-lg bg-surface-2 px-3 py-2 text-sm text-muted">
+            No new batter to come in — last batter stays on (or the innings ends).
+          </p>
+        )}
         <div className="grid grid-cols-2 gap-2">
           <button className="btn-outline" onClick={onCancel}>Cancel</button>
           <button

@@ -34,7 +34,7 @@ export default async function CricketMatchPage({ params }: { params: Promise<{ i
   // One parallel wave for everything that only needs the match (not the
   // derived innings state) — turns a chain of round-trips into a single hop.
   const [scoring, officials, members, squadA, squadB, pool, myPlayer] = await Promise.all([
-    tossDone ? getScoringData(id, m.players_per_side, m.overs, isPickup) : Promise.resolve(null),
+    tossDone ? getScoringData(id, m.players_per_side, m.overs, isPickup, !!group.cricket_rules?.last_man_stands) : Promise.resolve(null),
     tossDone ? getOfficials(id) : Promise.resolve([]),
     tossDone ? getGroupMembers(group.id) : Promise.resolve([]),
     isPickup && tossDone ? getMatchSquad(id, m.team_a.id) : Promise.resolve([]),

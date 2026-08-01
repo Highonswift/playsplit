@@ -88,6 +88,9 @@ export function computeInnings(setup: InningsSetup, balls: Ball[]): InningsState
   let overBowler: string | null = null;
 
   const swap = () => {
+    // A lone batter (last-man-stands) has no partner, so strike never rotates —
+    // they keep the strike on odd runs and at the end of the over.
+    if (striker === null || nonStriker === null) return;
     const t = striker;
     striker = nonStriker;
     nonStriker = t;
@@ -180,10 +183,18 @@ export function computeInnings(setup: InningsSetup, balls: Ball[]): InningsState
       if (BOWLER_CREDITED[b.wicket.type]) { bw.wickets += 1; oc.outBowlerId = b.bowlerId; }
       if (b.wicket.fielderId) oc.outFielderId = b.wicket.fielderId;
       fow.push({ wicketNumber: wickets, score: total, outPlayerId: outId!, over: oversText(legalBalls) });
-      partnerships.push({ batter1: striker!, batter2: nonStriker!, runs: pRuns, balls: pBalls, unbroken: false });
+      if (striker && nonStriker) {
+        partnerships.push({ batter1: striker, batter2: nonStriker, runs: pRuns, balls: pBalls, unbroken: false });
+      }
       pRuns = 0; pBalls = 0;
       const incoming = b.wicket.incomingBatterId ?? null;
       if (b.wicket.outEnd === 'striker') striker = incoming; else nonStriker = incoming;
+      // Last-man-stands: if one end is now empty but a batter remains, that batter
+      // carries on alone and always keeps the strike.
+      if (setup.lastManStands && striker === null && nonStriker !== null) {
+        striker = nonStriker;
+        nonStriker = null;
+      }
     }
 
     timeline.push({
@@ -211,7 +222,10 @@ export function computeInnings(setup: InningsSetup, balls: Ball[]): InningsState
   // Finalise strike rates.
   for (const c of bat.values()) c.strikeRate = c.balls > 0 ? +((c.runs / c.balls) * 100).toFixed(2) : 0;
 
-  const allOut = wickets >= setup.playersPerSide - 1;
+  // Normally an innings ends when the 2nd-last wicket falls (no batting pair
+  // left). With last-man-stands the lone batter continues, so it ends only when
+  // every batter is out.
+  const allOut = wickets >= (setup.lastManStands ? setup.playersPerSide : setup.playersPerSide - 1);
   const oversUp = setup.maxOvers !== null && legalBalls >= setup.maxOvers * 6;
   const complete = allOut || oversUp;
 

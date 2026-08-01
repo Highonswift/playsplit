@@ -4,6 +4,10 @@ import { createClient, getUser } from '@/lib/supabase/server';
 
 export type GroupRole = 'platform_admin' | 'group_admin' | 'player';
 
+export interface CricketRules {
+  last_man_stands?: boolean;
+}
+
 export interface GroupSummary {
   id: string;
   name: string;
@@ -12,6 +16,7 @@ export interface GroupSummary {
   invite_code: string;
   owner_id: string;
   role: GroupRole;
+  cricket_rules: CricketRules;
 }
 
 export interface GroupMember {
@@ -32,7 +37,7 @@ export const getMyGroups = cache(async (): Promise<GroupSummary[]> => {
   // RLS lets a member see the whole roster, so scope to OUR own membership rows.
   const { data } = await supabase
     .from('group_members')
-    .select('role, groups(id, name, sport, cost_model, invite_code, owner_id)')
+    .select('role, groups(id, name, sport, cost_model, invite_code, owner_id, cricket_rules)')
     .eq('user_id', user.id)
     .eq('status', 'active')
     .order('joined_at', { ascending: true });
@@ -40,8 +45,10 @@ export const getMyGroups = cache(async (): Promise<GroupSummary[]> => {
   return (data ?? [])
     .filter((r) => r.groups)
     .map((r) => {
-      const g = r.groups as unknown as Omit<GroupSummary, 'role'>;
-      return { ...g, role: r.role as GroupRole };
+      const g = r.groups as unknown as Omit<GroupSummary, 'role' | 'cricket_rules'> & {
+        cricket_rules: CricketRules | null;
+      };
+      return { ...g, cricket_rules: g.cricket_rules ?? {}, role: r.role as GroupRole };
     });
 });
 

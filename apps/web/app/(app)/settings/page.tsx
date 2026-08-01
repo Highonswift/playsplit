@@ -1,10 +1,10 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { MapPin, Users, ChevronRight, User, Coins, UserCheck } from 'lucide-react';
+import { MapPin, Users, ChevronRight, User, Coins, UserCheck, ListChecks } from 'lucide-react';
 import { getActiveGroup } from '@/lib/groups';
 import { getPoolPlayersWithLinks } from '@/lib/cricket';
 import { createClient, getUser } from '@/lib/supabase/server';
-import { ProfileForm, CostModelForm } from '@/components/settings-forms';
+import { ProfileForm, CostModelForm, CricketRuleToggle } from '@/components/settings-forms';
 import { ClaimPlayerCard } from '@/components/pickup';
 
 const LINKS = [
@@ -66,6 +66,21 @@ export default async function SettingsPage() {
             <h2 className="font-semibold">Cost-sharing model</h2>
           </div>
           <CostModelForm current={group.cost_model} />
+        </div>
+      )}
+
+      {/* Cricket rules (admin) */}
+      {isAdmin && (
+        <div className="card">
+          <div className="mb-3 flex items-center gap-2">
+            <ListChecks size={16} className="text-[var(--muted)]" />
+            <h2 className="font-semibold">Cricket rules</h2>
+          </div>
+          <CricketRuleToggle
+            label="Last man stands"
+            hint="A lone last batter keeps batting alone (no non-striker, keeps strike) until out."
+            enabled={!!group.cricket_rules?.last_man_stands}
+          />
         </div>
       )}
 

@@ -23,6 +23,57 @@ const wkt = (
   bowlerId = 'X',
 ): Ball => ({ bowlerId, runsBat: 0, extra: null, extraRuns: 0, wicket: { type, outEnd, incomingBatterId: incoming } });
 
+describe('last man stands (turf rule)', () => {
+  // 3-a-side: openers A & B, then C. Normally the innings ends at 2 wickets
+  // (no pair left); with lastManStands, C bats on alone.
+  const lm = (extra: Partial<InningsSetup> = {}) =>
+    setup({ playersPerSide: 3, maxOvers: null, lastManStands: true, ...extra });
+
+  it('the lone batter carries on and keeps strike on an odd run', () => {
+    const s = computeInnings(lm(), [
+      wkt('bowled', 'striker', 'C'), // A out, C in — C & B at crease
+      wkt('bowled', 'nonstriker'),   // B out, no one left to come in → C alone
+      run(1),                        // odd run must NOT move C off strike
+    ]);
+    expect(s.wickets).toBe(2);
+    expect(s.complete).toBe(false);   // still batting under the rule
+    expect(s.strikerId).toBe('C');    // lone batter keeps strike
+    expect(s.nonStrikerId).toBeNull();
+    expect(s.totalRuns).toBe(1);
+  });
+
+  it('the lone batter keeps strike at the end of the over too', () => {
+    const s = computeInnings(lm(), [
+      wkt('bowled', 'striker', 'C'),
+      wkt('bowled', 'nonstriker'),
+      run(0), run(0), run(0), run(0), run(0), run(0), // dots (over boundary passes)
+    ]);
+    expect(s.legalBalls).toBe(8); // 2 wicket balls + 6 dots
+    expect(s.strikerId).toBe('C'); // no partner to swap to at the over change
+  });
+
+  it('the innings ends only when the lone batter is out', () => {
+    const s = computeInnings(lm(), [
+      wkt('bowled', 'striker', 'C'),
+      wkt('bowled', 'nonstriker'),
+      run(1),
+      wkt('bowled', 'striker'), // C out — now everyone is out
+    ]);
+    expect(s.wickets).toBe(3);
+    expect(s.complete).toBe(true);
+    expect(s.strikerId).toBeNull();
+  });
+
+  it('without the rule, the innings ends when the pair is broken', () => {
+    const s = computeInnings(setup({ playersPerSide: 3, maxOvers: null }), [
+      wkt('bowled', 'striker', 'C'),
+      wkt('bowled', 'nonstriker'),
+    ]);
+    expect(s.wickets).toBe(2);
+    expect(s.complete).toBe(true); // last man does NOT bat on
+  });
+});
+
 describe('oversText', () => {
   it('formats legal balls', () => {
     expect(oversText(0)).toBe('0.0');

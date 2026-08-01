@@ -1,14 +1,67 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import type { CostModel } from '@playsplit/core';
 import {
   updateProfileAction,
   updateCostModelAction,
+  updateCricketRuleAction,
   type ActionState,
 } from '@/app/(app)/settings/actions';
 
 const INITIAL: ActionState = {};
+
+/** Admin toggle for a per-group cricket rule. */
+export function CricketRuleToggle({
+  label,
+  hint,
+  enabled,
+}: {
+  label: string;
+  hint: string;
+  enabled: boolean;
+}) {
+  const router = useRouter();
+  const [on, setOn] = useState(enabled);
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  const toggle = () =>
+    start(async () => {
+      setError(null);
+      const next = !on;
+      setOn(next); // optimistic
+      const res = await updateCricketRuleAction('last_man_stands', next);
+      if (res.error) {
+        setOn(!next);
+        setError(res.error);
+      } else {
+        router.refresh();
+      }
+    });
+
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium">{label}</p>
+          <p className="stat-label">{hint}</p>
+        </div>
+        <button
+          role="switch"
+          aria-checked={on}
+          onClick={toggle}
+          disabled={pending}
+          className={`relative h-6 w-11 shrink-0 rounded-full transition ${on ? 'bg-primary' : 'bg-surface-2'} disabled:opacity-50`}
+        >
+          <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${on ? 'left-[22px]' : 'left-0.5'}`} />
+        </button>
+      </div>
+      {error && <p className="mt-1 text-xs text-danger">{error}</p>}
+    </div>
+  );
+}
 
 const MODEL_LABELS: Record<CostModel, string> = {
   equal: 'Equal — split evenly',

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import type { CostModel } from '@playsplit/core';
 import { createClient } from '@/lib/supabase/server';
-import { getActiveGroup } from '@/lib/groups';
+import { getActiveGroup, type CricketRules } from '@/lib/groups';
 
 export interface ActionState {
   error?: string;
@@ -47,6 +47,25 @@ export async function updateCostModelAction(
 
   const supabase = await createClient();
   const { error } = await supabase.from('groups').update({ cost_model: model }).eq('id', group.id);
+  if (error) return { error: error.message };
+
+  revalidatePath('/', 'layout');
+  revalidatePath('/settings');
+  return { ok: true };
+}
+
+/** Admin toggles a per-group cricket rule (merged into groups.cricket_rules). */
+export async function updateCricketRuleAction(
+  rule: keyof CricketRules,
+  enabled: boolean,
+): Promise<ActionState> {
+  const group = await getActiveGroup();
+  if (!group) return { error: 'No active group.' };
+  if (group.role === 'player') return { error: 'Only group admins can change rules.' };
+
+  const next: CricketRules = { ...group.cricket_rules, [rule]: enabled };
+  const supabase = await createClient();
+  const { error } = await supabase.from('groups').update({ cricket_rules: next }).eq('id', group.id);
   if (error) return { error: error.message };
 
   revalidatePath('/', 'layout');

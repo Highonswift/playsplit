@@ -32,6 +32,9 @@ export interface InningsSetup {
   nonStrikerId: string;
   maxOvers: number | null;   // null = unlimited
   playersPerSide: number;
+  /** Turf rule: the last remaining batter bats on alone (no non-striker,
+   *  no strike rotation). Innings ends only when they too are out. */
+  lastManStands?: boolean;
 }
 
 export interface BatCard {

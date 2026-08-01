@@ -73,6 +73,7 @@ export async function getScoringData(
   playersPerSide: number,
   maxOvers: number | null,
   isPickup = false,
+  lastManStands = false,
 ): Promise<ScoringData> {
   const supabase = await createClient();
 
@@ -131,6 +132,7 @@ export async function getScoringData(
       nonStrikerId: innings.non_striker_id,
       maxOvers,
       playersPerSide: effectivePerSide,
+      lastManStands,
     },
     balls,
   );
